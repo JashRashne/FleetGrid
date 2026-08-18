@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Truck, LayoutDashboard, PlusCircle, FileText, 
-  LogOut, ShieldCheck, User, Sparkles
+  LogOut, ShieldCheck, User, Sparkles, Route
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -19,6 +19,7 @@ export default function AppNavbar() {
   const navLinks = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/plan', label: 'Plan a Trip', icon: PlusCircle },
+    { to: '/trips', label: 'Trips', icon: Route },
     { to: '/logs', label: 'Daily Logs', icon: FileText },
   ];
 

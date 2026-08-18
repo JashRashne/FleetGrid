@@ -135,41 +135,44 @@ export default function DashboardPage() {
 
         {/* Quick Launch & Recent Trips Row */}
         <div className="dashboard-grid-layout">
-          {/* Recent Trips Section */}
+          {/* Recent Trips Section (Latest 2) */}
           <section className="dashboard-section recent-trips-panel">
             <div className="section-header">
               <div>
-                <h2>Your Saved & Recent Trips</h2>
-                <p>Select any route to review stops, map geometry, or view 24-hour logbooks.</p>
+                <h2>Recent Trips</h2>
+                <p>Showing your 2 most recent dispatches. Browse full history on the Trips page.</p>
               </div>
-              <button 
-                className="btn-text-action" 
-                onClick={() => navigate('/plan')}
-              >
-                <span>New trip</span>
-                <ArrowRight size={15} />
-              </button>
+              <div className="section-header-actions">
+                <button 
+                  className="btn-text-action" 
+                  onClick={() => navigate('/trips')}
+                  title="View complete trip archives"
+                >
+                  <span>View all trips ({savedTrips?.length || 0})</span>
+                  <ArrowRight size={15} />
+                </button>
+              </div>
             </div>
 
             {savedTrips && savedTrips.length > 0 ? (
               <div className="trips-list">
-                {savedTrips.map((trip) => (
+                {savedTrips.slice(0, 2).map((trip) => (
                   <div key={trip.id} className="trip-item-card">
                     <div className="trip-route-info">
                       <div className="route-endpoints">
                         <span className="route-origin">
                           <MapPin size={15} className="pin-origin" />
-                          <b>{trip.locations?.current?.name || 'Start'}</b>
+                          <b>{trip.locations?.current?.name || trip.origin_name || 'Start'}</b>
                         </span>
                         <ArrowRight size={14} className="route-arrow" />
                         <span className="route-dest">
                           <MapPin size={15} className="pin-dest" />
-                          <b>{trip.locations?.dropoff?.name || 'Destination'}</b>
+                          <b>{trip.locations?.dropoff?.name || trip.dropoff_name || 'Destination'}</b>
                         </span>
                       </div>
-                      {trip.locations?.pickup?.name && (
+                      {(trip.locations?.pickup?.name || trip.pickup_name) && (
                         <span className="route-pickup-tag">
-                          Pickup: {trip.locations.pickup.name}
+                          Pickup: {trip.locations?.pickup?.name || trip.pickup_name}
                         </span>
                       )}
                     </div>
@@ -213,6 +216,19 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 ))}
+
+                {savedTrips.length > 2 && (
+                  <div className="more-trips-banner">
+                    <span>+{savedTrips.length - 2} more older trip(s) in your archives</span>
+                    <button 
+                      className="btn-view-all-trips-inline"
+                      onClick={() => navigate('/trips')}
+                    >
+                      <span>Go to Trips History</span>
+                      <ArrowRight size={14} />
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="empty-trips-box">

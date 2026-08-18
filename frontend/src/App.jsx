@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import LandingPage from './components/LandingPage';
 import AuthPage from './components/AuthPage';
 import DashboardPage from './components/DashboardPage';
+import TripsPage from './components/TripsPage';
 import PlannerExperience from './components/PlannerExperience';
 import LogsHubPage from './components/LogsHubPage';
 
@@ -39,6 +40,16 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Protected Trip History & Archive */}
+          <Route
+            path="/trips"
+            element={
+              <ProtectedRoute>
+                <TripsPage />
               </ProtectedRoute>
             }
           />
