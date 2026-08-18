@@ -10,36 +10,117 @@ export default function DailyLogSheet({ logData, dayIndex = 0, totalDays = 1 }) 
   const gridX = 140;
   const gridWidth = 720; // 30px per hour * 24 hours
   const rowHeight = 36;
+  const gridTopY = 160;
+  const gridBottomY = gridTopY + rowHeight * 4; // 304
+
+  // The 4 horizontal duty lines are centered within each status row band
   const rowYs = {
-    OFF_DUTY: 160,
-    SLEEPER_BERTH: 160 + rowHeight,
-    DRIVING: 160 + rowHeight * 2,
-    ON_DUTY_NOT_DRIVING: 160 + rowHeight * 3,
+    OFF_DUTY: gridTopY + rowHeight * 0.5,            // 178
+    SLEEPER_BERTH: gridTopY + rowHeight * 1.5,       // 214
+    DRIVING: gridTopY + rowHeight * 2.5,             // 250
+    ON_DUTY_NOT_DRIVING: gridTopY + rowHeight * 3.5, // 286
   };
-  const gridBottomY = 160 + rowHeight * 4;
+
+  const getStatusY = (status) => {
+    const s = String(status || '').toUpperCase();
+    if (s.includes('SLEEP')) return rowYs.SLEEPER_BERTH;
+    if (s.includes('DRIV')) return rowYs.DRIVING;
+    if (s.includes('ON_DUTY') || s.includes('ON DUTY') || s.includes('PICKUP') || s.includes('LOAD') || s.includes('FUEL')) {
+      return rowYs.ON_DUTY_NOT_DRIVING;
+    }
+    return rowYs.OFF_DUTY;
+  };
+
+  const getNormalizedStatus = (status, text = '') => {
+    const combined = `${status} ${text}`.toUpperCase();
+    if (combined.includes('SLEEP')) return 'SLEEPER_BERTH';
+    if (combined.includes('DRIV')) return 'DRIVING';
+    if (combined.includes('LOAD') || combined.includes('UNLOAD') || combined.includes('PICKUP') || combined.includes('DROPOFF') || combined.includes('INSPECT') || combined.includes('FUEL') || combined.includes('ON_DUTY') || combined.includes('ON DUTY')) {
+      return 'ON_DUTY_NOT_DRIVING';
+    }
+    return 'OFF_DUTY';
+  };
 
   const hourToX = (hour) => gridX + (Math.max(0, Math.min(24, Number(hour) || 0)) / 24.0) * gridWidth;
 
-  // Normalize segments
+  // Extract raw segments
   const rawSegments = logData.segments || logData.duty_segments || logData.grid_intervals || [];
   let segments = rawSegments.map((seg) => ({
     start_hour: seg.start_hour !== undefined ? Number(seg.start_hour) : (seg.start_min !== undefined ? seg.start_min / 60 : 0),
     end_hour: seg.end_hour !== undefined ? Number(seg.end_hour) : (seg.end_min !== undefined ? seg.end_min / 60 : 24),
-    duty_status: seg.duty_status || 'OFF_DUTY',
+    duty_status: getNormalizedStatus(seg.duty_status, seg.remark),
     remark: seg.remark || '',
     location: seg.location || ''
-  }));
+  })).filter(s => s.end_hour > s.start_hour);
 
+  const remarks = logData.remarks || [];
+
+  // Fallback: If segments array was empty (from an older database record), reconstruct from remarks timeline
+  if (segments.length === 0 && remarks.length > 0) {
+    const sortedRemarks = [...remarks].sort((a, b) => (Number(a.time_hour) || 0) - (Number(b.time_hour) || 0));
+    let lastHour = 0;
+    let lastStatus = 'OFF_DUTY';
+
+    sortedRemarks.forEach((rem) => {
+      const remH = Math.max(0, Math.min(24, Number(rem.time_hour) || 0));
+      if (remH > lastHour) {
+        segments.push({
+          start_hour: lastHour,
+          end_hour: remH,
+          duty_status: lastStatus,
+          remark: '',
+          location: ''
+        });
+      }
+      lastHour = remH;
+      lastStatus = getNormalizedStatus(rem.duty_status, rem.text || rem.remark);
+    });
+
+    if (lastHour < 24) {
+      segments.push({
+        start_hour: lastHour,
+        end_hour: 24,
+        duty_status: lastStatus,
+        remark: '',
+        location: ''
+      });
+    }
+  }
+
+  // If still empty, default to 24h Off Duty
   if (segments.length === 0) {
     segments = [{ start_hour: 0, end_hour: 24, duty_status: 'OFF_DUTY' }];
   }
+
+  // Calculate exact hours from segments directly to ensure 100% mathematical accuracy
+  let computedTotals = {
+    off_duty: 0,
+    sleeper_berth: 0,
+    driving: 0,
+    on_duty_not_driving: 0
+  };
+
+  segments.forEach((seg) => {
+    const dur = Math.max(0, seg.end_hour - seg.start_hour);
+    if (seg.duty_status === 'SLEEPER_BERTH') computedTotals.sleeper_berth += dur;
+    else if (seg.duty_status === 'DRIVING') computedTotals.driving += dur;
+    else if (seg.duty_status === 'ON_DUTY_NOT_DRIVING') computedTotals.on_duty_not_driving += dur;
+    else computedTotals.off_duty += dur;
+  });
+
+  const totalsHours = {
+    off_duty: Number((logData.totals_hours?.off_duty ?? (computedTotals.off_duty > 0 ? computedTotals.off_duty : (logData.total_off_duty_hours || computedTotals.off_duty))).toFixed(1)),
+    sleeper_berth: Number((logData.totals_hours?.sleeper_berth ?? (computedTotals.sleeper_berth > 0 ? computedTotals.sleeper_berth : (logData.total_sleeper_hours || computedTotals.sleeper_berth))).toFixed(1)),
+    driving: Number((logData.totals_hours?.driving ?? (computedTotals.driving > 0 ? computedTotals.driving : (logData.total_driving_hours || computedTotals.driving))).toFixed(1)),
+    on_duty_not_driving: Number((logData.totals_hours?.on_duty_not_driving ?? (computedTotals.on_duty_not_driving > 0 ? computedTotals.on_duty_not_driving : (logData.total_on_duty_hours || computedTotals.on_duty_not_driving))).toFixed(1)),
+  };
 
   // Build the continuous stepped line path across 24 hours
   let pathD = "";
   segments.forEach((seg, idx) => {
     const x1 = hourToX(seg.start_hour);
     const x2 = hourToX(seg.end_hour);
-    const y = rowYs[seg.duty_status] || rowYs.OFF_DUTY;
+    const y = getStatusY(seg.duty_status);
 
     if (idx === 0) {
       pathD += `M ${x1} ${y} L ${x2} ${y}`;
@@ -57,20 +138,12 @@ export default function DailyLogSheet({ logData, dayIndex = 0, totalDays = 1 }) 
   const mainOffice = logData.main_office_address || "100 Logistics Blvd, Suite 400, Chicago, IL";
   const homeTerminal = logData.home_terminal_address || "770 Freight Way, Chicago, IL";
 
-  const totalsHours = logData.totals_hours || {
-    off_duty: logData.totals?.OFF_DUTY !== undefined ? logData.totals.OFF_DUTY : (logData.total_off_duty_hours || 0),
-    sleeper_berth: logData.totals?.SLEEPER_BERTH !== undefined ? logData.totals.SLEEPER_BERTH : (logData.total_sleeper_hours || 0),
-    driving: logData.totals?.DRIVING !== undefined ? logData.totals.DRIVING : (logData.total_driving_hours || 0),
-    on_duty_not_driving: logData.totals?.ON_DUTY_NOT_DRIVING !== undefined ? logData.totals.ON_DUTY_NOT_DRIVING : (logData.total_on_duty_hours || 0),
-    total: 24.0
-  };
-
-  const remarks = logData.remarks || [];
+  const onDutyToday = Number((totalsHours.driving + totalsHours.on_duty_not_driving).toFixed(1));
   const recap = logData.recap || {
-    on_duty_today_hours: Number((Number(totalsHours.driving || 0) + Number(totalsHours.on_duty_not_driving || 0)).toFixed(1)),
+    on_duty_today_hours: onDutyToday,
     cycle_hours_at_start: 24.5,
-    cycle_hours_cumulative: Number((24.5 + Number(totalsHours.driving || 0) + Number(totalsHours.on_duty_not_driving || 0)).toFixed(1)),
-    cycle_hours_remaining: Math.max(0, Number((70.0 - (24.5 + Number(totalsHours.driving || 0) + Number(totalsHours.on_duty_not_driving || 0))).toFixed(1)))
+    cycle_hours_cumulative: Number((24.5 + onDutyToday).toFixed(1)),
+    cycle_hours_remaining: Math.max(0, Number((70.0 - (24.5 + onDutyToday)).toFixed(1)))
   };
 
   return (
@@ -147,8 +220,8 @@ export default function DailyLogSheet({ logData, dayIndex = 0, totalDays = 1 }) 
           { label: "3. Driving", key: "driving", y: rowYs.DRIVING },
           { label: "4. On Duty (not driving)", key: "on_duty_not_driving", y: rowYs.ON_DUTY_NOT_DRIVING },
         ].map((row, idx) => {
-          const topY = 160 + idx * rowHeight;
-          const val = Number(totalsHours[row.key]) || 0;
+          const topY = gridTopY + idx * rowHeight;
+          const val = totalsHours[row.key] || 0;
 
           return (
             <g key={row.key}>
@@ -166,6 +239,17 @@ export default function DailyLogSheet({ logData, dayIndex = 0, totalDays = 1 }) 
                 fill={idx % 2 === 0 ? "#f8fafc" : "#ffffff"}
                 stroke="#cbd5e1"
                 strokeWidth="1"
+              />
+
+              {/* Horizontal Status Track Guide Line */}
+              <line
+                x1={gridX}
+                y1={row.y}
+                x2={gridX + gridWidth}
+                y2={row.y}
+                stroke="#e2e8f0"
+                strokeWidth="1"
+                strokeDasharray="2 2"
               />
 
               {/* 15-Minute Subdivider Ticks */}
@@ -191,7 +275,7 @@ export default function DailyLogSheet({ logData, dayIndex = 0, totalDays = 1 }) 
               {/* Total Subtotal on Right */}
               <rect x="870" y={topY + 4} width="50" height="28" fill="#f1f5f9" rx="4" stroke="#cbd5e1" />
               <text x="895" y={topY + 22} fontSize="13" fontWeight="700" fill="#0f172a" textAnchor="middle">
-                {val.toFixed(1)}
+                {Number(val).toFixed(1)}
               </text>
             </g>
           );
@@ -200,7 +284,7 @@ export default function DailyLogSheet({ logData, dayIndex = 0, totalDays = 1 }) 
         {/* Outer Grid Border */}
         <rect
           x={gridX}
-          y="160"
+          y={gridTopY}
           width={gridWidth}
           height={rowHeight * 4}
           fill="none"
