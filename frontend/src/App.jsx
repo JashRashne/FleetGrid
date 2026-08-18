@@ -7,6 +7,7 @@ import DashboardPage from './components/DashboardPage';
 import TripsPage from './components/TripsPage';
 import PlannerExperience from './components/PlannerExperience';
 import LogsHubPage from './components/LogsHubPage';
+import NotFoundPage from './components/NotFoundPage';
 
 /**
  * Route protection wrapper:
@@ -84,8 +85,8 @@ export default function App() {
             }
           />
 
-          {/* Catch-all redirect to Home */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {/* Catch-all 404 Route */}
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

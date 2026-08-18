@@ -13,6 +13,7 @@ import LogSheetViewer from './LogSheetViewer';
 import AppNavbar from './AppNavbar';
 import { planTrip, fetchTripById } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const RESULT_TABS = [
   { id: 'overview', label: 'Your route', icon: Map },
@@ -36,6 +37,8 @@ export default function PlannerExperience() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
+
+  useDocumentTitle(tripId ? 'Trip · MileMint' : 'Plan · MileMint');
 
   useEffect(() => {
     if (tripId) {

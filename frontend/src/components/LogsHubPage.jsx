@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { fetchLogs } from '../services/api';
 import AppNavbar from './AppNavbar';
 import DailyLogSheet from './DailyLogSheet';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const SAMPLE_LOGS = [
   {
@@ -54,6 +55,7 @@ const SAMPLE_LOGS = [
 ];
 
 export default function LogsHubPage() {
+  useDocumentTitle('Logs · MileMint');
   const { user, activeTrip, savedTrips } = useAuth();
   const navigate = useNavigate();
 

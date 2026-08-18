@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Lock, Mail, ShieldCheck, Truck, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 export default function AuthPage() {
   const { login, loginDemo, isAuthenticated } = useAuth();
@@ -12,6 +13,8 @@ export default function AuthPage() {
   const [password, setPassword] = useState('••••••••');
   const [driverName, setDriverName] = useState('Alex Morgan');
   const [isRegister, setIsRegister] = useState(false);
+
+  useDocumentTitle(isRegister ? 'Register · MileMint' : 'Sign In · MileMint');
 
   React.useEffect(() => {
     if (isAuthenticated) navigate(from, { replace: true });

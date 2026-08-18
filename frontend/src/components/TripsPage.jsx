@@ -8,8 +8,10 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import AppNavbar from './AppNavbar';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 export default function TripsPage() {
+  useDocumentTitle('Trips · MileMint');
   const { user, savedTrips, deleteTrip, setActiveTrip } = useAuth();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');

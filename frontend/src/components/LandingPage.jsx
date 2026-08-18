@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Check, Menu, Route, ShieldCheck, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const benefits = [
   ['01', 'Route planning', 'Build a trip around the stops that actually matter.'],
@@ -10,6 +11,7 @@ const benefits = [
 ];
 
 export default function LandingPage() {
+  useDocumentTitle('MileMint ELD');
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
