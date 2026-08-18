@@ -170,8 +170,15 @@ class PlanTripView(APIView):
         sleeper_resets_count = sum(1 for e in events if e.event_type == EventType.SLEEPER_RESET_10.value)
         cycle_restarts_count = sum(1 for e in events if e.event_type == EventType.CYCLE_RESTART_34.value)
 
+        running_cycle_end = initial_cycle_used_minutes
+        for e in events:
+            if e.event_type == EventType.CYCLE_RESTART_34.value:
+                running_cycle_end = 0
+            elif e.duty_status in [DutyStatus.DRIVING.value, DutyStatus.ON_DUTY_NOT_DRIVING.value]:
+                running_cycle_end += e.duration_minutes
+
         cycle_added_hours = round(total_on_duty_mins / 60.0, 2)
-        ending_cycle_hours = round(min(70.0, cycle_used_hours + cycle_added_hours), 2)
+        ending_cycle_hours = round(running_cycle_end / 60.0, 2)
         remaining_cycle_hours = round(max(0.0, 70.0 - ending_cycle_hours), 2)
 
         # Fuel estimations

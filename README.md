@@ -1,23 +1,41 @@
-# 🚛 FMCSA ELD Trip Planner & Daily Log Generator
+# 🚛 FMCSA HOS-Aware Trip Planner & Daily Log Generator
 
-A full-stack web application built with **Django (Backend)** and **React (Frontend)** that automates commercial truck routing compliant with Federal Motor Carrier Safety Administration (FMCSA) **Hours of Service (HOS) 70-Hour / 8-Day rules** and dynamically generates high-fidelity **24-Hour Driver's Daily Log Sheets (Vector SVG)**.
+A full-stack web application built with **Django (Backend)** and **React (Frontend)** that provides commercial truck routing and planning logic modeled on Federal Motor Carrier Safety Administration (FMCSA) **Hours of Service (HOS) 70-Hour / 8-Day rules** and dynamically generates high-fidelity **24-Hour Driver's Daily Log Sheets (Vector SVG)**.
 
 ---
 
 ## 🌟 Key Features
 
 * **🎨 Claymorphism UI / UX**: Tactile 3D cards, puffy interactive pills, inset inputs, and responsive layouts.
-* **⏱️ Integer-Minute HOS Precision**: Strict compliance engine operating in integer minutes across:
+* **⏱️ Integer-Minute HOS Precision**: HOS trip-planning logic operating in integer minutes across:
   * **11-Hour Driving Limit** (49 CFR § 395.3(a)(3))
   * **14-Hour Duty Window** (49 CFR § 395.3(a)(2))
   * **30-Minute Rest Break** required after 8 cumulative driving hours (49 CFR § 395.3(a)(3)(ii)) — *satisfied by non-driving fuel/pickup*
   * **10-Hour Sleeper Berth / Off-Duty Reset** (49 CFR § 395.3(a)(1))
-  * **70-Hour / 8-Day Cycle Rule** with **34-Hour Restart** (49 CFR § 395.3(b)(2) & (c))
+  * **70-Hour / 8-Day Cycle Rule** with conservative **34-Hour Restart** planning strategy (49 CFR § 395.3(b)(2) & (c))
 * **🛢️ 1,000-Mile Fuel Scheduling**: Automatic stop generation at $\le 1,000\text{ miles}$ intervals.
 * **📦 1-Hour Shipper / Receiver Windows**: 1-hour On-Duty loading at pickup and 1-hour unloading at drop-off.
 * **🗺️ Interactive Route Map**: Leaflet map with OSRM driving geometry and custom markers for Start, Pickup, Dropoff, Fuel, Breaks, and 10h Resets.
-* **📄 Vector SVG FMCSA Daily Log Sheets**: Pixel-perfect vector reproduction of standard 24-hour log sheets (`blank-paper-log.png`) with continuous stepped line plotting, subtotal validation summing to $24.00\text{ hrs}$, remarks drop lines, and 70-hour recap table.
+* **📄 Vector SVG ELD-Style Daily Log Sheets**: Pixel-perfect vector reproduction of standard 24-hour log sheets (`blank-paper-log.png`) with continuous stepped line plotting, subtotal validation summing to $24.00\text{ hrs}$, remarks drop lines, and 70-hour recap table.
 * **🖨️ Multi-Day Pagination & Print/PDF Export**: Dedicated day navigation tabs for multi-day trips and print stylesheets.
+
+---
+
+## 📋 Assessment Assumptions & Regulatory Modeling
+
+1. **Current Cycle Used Limitation (70-Hour / 8-Day Rolling Window)**:
+   * The assessment input supplies only aggregate `current_cycle_used_hours` and does not provide the driver's previous 8 days of timestamped duty history.
+   * Therefore, a true rolling 70-hour/8-day window calculation cannot be reconstructed from historical day-by-day drop-offs.
+   * Our planner conservatively assumes previously accumulated cycle hours do not roll off during the planned trip. If no driving capacity remains, it utilizes a 34-hour restart as a conservative planning strategy before further driving.
+   * A 34-hour restart is an operational planning strategy in this model and is not described as universally legally mandatory.
+
+2. **Fresh Daily HOS Clock Assumption**:
+   * The assessment does not provide the driver's current daily duty-shift history immediately preceding dispatch.
+   * Therefore, the planner assumes the trip begins after a qualifying daily rest period with fresh daily clocks:
+     * 11-hour driving clock = 0 used (11.0h remaining)
+     * 14-hour duty window = 0 elapsed (14.0h remaining)
+     * 8-hour cumulative-driving break clock = 0 elapsed (8.0h remaining)
+   * The generated first-day log represents any time prior to departure on Day 1 as `OFF_DUTY`.
 
 ---
 

@@ -1,8 +1,28 @@
 """
-FMCSA Hours of Service (HOS) Engine.
-Strictly adheres to 49 CFR Part 395 for Property-Carrying Commercial Drivers under the 70-hour / 8-day rule.
+FMCSA Hours of Service (HOS) trip-planning engine.
 
-Calculations are performed strictly in INTEGER MINUTES to eliminate floating-point rounding errors.
+Models the property-carrying driver HOS constraints required by the
+assessment, subject to the documented input assumptions and limitations.
+
+Calculations are performed in integer minutes to eliminate floating-point
+rounding errors.
+
+Key Assumptions & Limitations:
+1. Current Cycle Used Limitation:
+   The assignment supplies only aggregate Current Cycle Used and does not provide
+   the driver's previous 8 days of timestamped duty history. Therefore a true rolling
+   70-hour/8-day calculation cannot be reconstructed. Our planner conservatively assumes
+   previously accumulated cycle hours do not roll off during the planned trip.
+   When no driving capacity remains, it uses a 34-hour restart as a conservative planning strategy.
+   The 34-hour restart is an operational planning strategy and not universally mandatory under FMCSA.
+
+2. Fresh Daily HOS Clock Assumption:
+   The assignment does not provide the driver's current duty-shift history prior to dispatch.
+   Therefore, the planner assumes the trip begins after a qualifying rest period with:
+   - 11-hour driving clock = fresh (0 / 660 mins used)
+   - 14-hour duty window = fresh (0 / 840 mins elapsed)
+   - 8-hour cumulative-driving break clock = fresh (0 / 480 mins elapsed)
+   The generated daily log represents any time prior to departure on Day 1 as OFF_DUTY.
 """
 
 from dataclasses import dataclass, asdict
@@ -64,6 +84,8 @@ class TripEvent:
     counts_toward_drive: bool
     counts_toward_shift: bool
     counts_toward_cycle: bool
+    segment_distance_miles: float = 0.0
+    route_mile_marker: float = 0.0
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -87,8 +109,8 @@ def schedule_fmcsa_trip(
     interpolate_coords_fn=None
 ) -> List[TripEvent]:
     """
-    Simulates a compliant FMCSA trip schedule generating a continuous, gap-free
-    chronological list of TripEvents.
+    Generates an FMCSA HOS-aware trip schedule under the documented
+    assessment assumptions.
     """
     if start_time_iso:
         try:
@@ -117,7 +139,8 @@ def schedule_fmcsa_trip(
         event_type: EventType,
         duty_status: DutyStatus,
         duration: int,
-        distance_at_event: float,
+        segment_miles: float,
+        mile_marker: float,
         coords: tuple,
         loc_name: str,
         remark_text: str
@@ -129,7 +152,13 @@ def schedule_fmcsa_trip(
         end_iso = (base_time + timedelta(minutes=end_min)).isoformat()
 
         counts_drive = (duty_status == DutyStatus.DRIVING)
-        counts_shift = True  # All elapsed time in shift counts toward 14h window
+        # Shift window elapsed time is only counted during active shift events;
+        # qualifying reset periods (10h sleeper reset, 34h restart, end off-duty) reset/conclude the shift.
+        counts_shift = (event_type not in [
+            EventType.SLEEPER_RESET_10,
+            EventType.CYCLE_RESTART_34,
+            EventType.END_OFF_DUTY
+        ])
         counts_cycle = (duty_status in [DutyStatus.DRIVING, DutyStatus.ON_DUTY_NOT_DRIVING])
 
         evt = TripEvent(
@@ -141,14 +170,16 @@ def schedule_fmcsa_trip(
             duration_minutes=duration,
             start_time_iso=start_iso,
             end_time_iso=end_iso,
-            route_distance_miles=round(distance_at_event, 2),
+            route_distance_miles=round(mile_marker, 2),
             latitude=coords[0] if coords else 0.0,
             longitude=coords[1] if coords else 0.0,
             location_name=loc_name,
             remark=remark_text,
             counts_toward_drive=counts_drive,
             counts_toward_shift=counts_shift,
-            counts_toward_cycle=counts_cycle
+            counts_toward_cycle=counts_cycle,
+            segment_distance_miles=round(segment_miles, 2),
+            route_mile_marker=round(mile_marker, 2)
         )
         event_seq += 1
         current_minutes = end_min
@@ -186,12 +217,15 @@ def schedule_fmcsa_trip(
 
                 # Check if any hard limit has already been hit and must be resolved first
                 if avail_cycle <= 0:
-                    # 34-Hour Restart Required
+                    # No cycle driving capacity remains.
+                    # Under the assessment's conservative planning model,
+                    # schedule a 34-hour restart before further driving.
                     cur_coords = get_coords(cumulative_miles, ms.start_coords)
                     evt = make_event(
                         EventType.CYCLE_RESTART_34,
                         DutyStatus.SLEEPER_BERTH,
                         RESTART_CYCLE_MINUTES,
+                        0.0,
                         cumulative_miles,
                         cur_coords,
                         f"Rest Area near {ms.location_name}",
@@ -206,12 +240,14 @@ def schedule_fmcsa_trip(
                     continue
 
                 if avail_drive <= 0 or avail_shift <= 0:
-                    # 10-Hour Sleeper Berth Reset Required
+                    # Daily driving/window capacity exhausted.
+                    # Planner inserts a 10-hour sleeper/off-duty reset before further driving.
                     cur_coords = get_coords(cumulative_miles, ms.start_coords)
                     evt = make_event(
                         EventType.SLEEPER_RESET_10,
                         DutyStatus.SLEEPER_BERTH,
                         RESET_SLEEPER_MINUTES,
+                        0.0,
                         cumulative_miles,
                         cur_coords,
                         f"Rest Area / Truck Stop near {ms.location_name}",
@@ -231,6 +267,7 @@ def schedule_fmcsa_trip(
                         EventType.REST_BREAK_30,
                         DutyStatus.OFF_DUTY,
                         MANDATORY_BREAK_MINUTES,
+                        0.0,
                         cumulative_miles,
                         cur_coords,
                         f"Rest Area near {ms.location_name}",
@@ -249,6 +286,7 @@ def schedule_fmcsa_trip(
                         EventType.FUEL_STOP,
                         DutyStatus.ON_DUTY_NOT_DRIVING,
                         FUEL_STOP_DURATION_MINUTES,
+                        0.0,
                         cumulative_miles,
                         cur_coords,
                         f"Travel Center / Fuel Stop near {ms.location_name}",
@@ -284,6 +322,7 @@ def schedule_fmcsa_trip(
                     EventType.DRIVE_SEGMENT,
                     DutyStatus.DRIVING,
                     step_drive_mins,
+                    step_miles,
                     step_end_miles,
                     step_coords,
                     ms.location_name,
@@ -304,25 +343,9 @@ def schedule_fmcsa_trip(
 
         elif ms.milestone_type == 'TASK':
             # Non-driving task (Pickup or Dropoff)
+            # Under FMCSA rules, the 70-hour cycle rule prohibits *driving* after reaching 70 hours.
+            # On-duty non-driving work is permitted even if cycle_used exceeds 70 hours.
             task_duration = ms.duration_minutes
-
-            # Check if cycle hours allow this task
-            if (cycle_used + task_duration) > MAX_CYCLE_MINUTES:
-                # 34-Hour Restart before task
-                cur_coords = get_coords(cumulative_miles, ms.start_coords)
-                events.append(make_event(
-                    EventType.CYCLE_RESTART_34,
-                    DutyStatus.SLEEPER_BERTH,
-                    RESTART_CYCLE_MINUTES,
-                    cumulative_miles,
-                    cur_coords,
-                    f"Rest Area near {ms.location_name}",
-                    "34-Hour Cycle Restart"
-                ))
-                cycle_used = 0
-                drive_clock = 0
-                shift_clock = 0
-                continuous_drive_clock = 0
 
             # Execute task
             evt_type = EventType.PICKUP if "pickup" in ms.name.lower() else EventType.DROPOFF
@@ -330,6 +353,7 @@ def schedule_fmcsa_trip(
                 evt_type,
                 DutyStatus.ON_DUTY_NOT_DRIVING,
                 task_duration,
+                0.0,
                 cumulative_miles,
                 ms.start_coords,
                 ms.location_name,
@@ -344,3 +368,4 @@ def schedule_fmcsa_trip(
                 continuous_drive_clock = 0
 
     return events
+

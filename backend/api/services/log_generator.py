@@ -5,7 +5,7 @@ Slices continuous TripEvents into 24-hour (1,440-minute) daily grids faithful to
 
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
-from .hos_engine import TripEvent, DutyStatus
+from .hos_engine import TripEvent, DutyStatus, EventType
 
 
 MINUTES_PER_DAY = 24 * 60  # 1,440 minutes
@@ -54,6 +54,7 @@ def generate_daily_log_sheets(
     if departure_offset_minutes > 0:
         timeline_segments.append({
             "duty_status": DutyStatus.OFF_DUTY.value,
+            "event_type": EventType.START.value,
             "start_min": 0,
             "end_min": departure_offset_minutes,
             "duration": departure_offset_minutes,
@@ -67,17 +68,17 @@ def generate_daily_log_sheets(
         s_min = departure_offset_minutes + evt.start_minutes
         e_min = departure_offset_minutes + evt.end_minutes
         dur = evt.duration_minutes
-        miles = evt.route_distance_miles if evt.duty_status == DutyStatus.DRIVING.value else 0.0
+        miles = evt.segment_distance_miles if evt.duty_status == DutyStatus.DRIVING.value else 0.0
 
         timeline_segments.append({
             "duty_status": evt.duty_status,
+            "event_type": evt.event_type,
             "start_min": s_min,
             "end_min": e_min,
             "duration": dur,
             "remark": evt.remark,
             "location": evt.location_name,
             "miles_driven": miles,
-            "event_type": evt.event_type
         })
 
     # 3. Post-trip time to complete the last day's 24 hours with OFF_DUTY
@@ -86,6 +87,7 @@ def generate_daily_log_sheets(
     if last_end < full_span_needed:
         timeline_segments.append({
             "duty_status": DutyStatus.OFF_DUTY.value,
+            "event_type": EventType.END_OFF_DUTY.value,
             "start_min": last_end,
             "end_min": full_span_needed,
             "duration": full_span_needed - last_end,
@@ -96,7 +98,7 @@ def generate_daily_log_sheets(
 
     # Now slice timeline_segments into per-day 1,440-minute blocks
     daily_logs = []
-    cumulative_cycle_mins = initial_cycle_used_minutes
+    running_cycle_mins = initial_cycle_used_minutes
 
     for day_idx in range(num_days):
         day_num = day_idx + 1
@@ -107,6 +109,7 @@ def generate_daily_log_sheets(
         day_segments = []
         day_remarks = []
         day_miles_driven = 0.0
+        cycle_at_day_start = running_cycle_mins
 
         for seg in timeline_segments:
             # Check if this segment intersects this day's [day_start_min, day_end_min]
@@ -124,6 +127,10 @@ def generate_daily_log_sheets(
             if clipped_dur <= 0:
                 continue
 
+            seg_total_dur = seg_e - seg_s
+            seg_fraction = clipped_dur / seg_total_dur if seg_total_dur > 0 else 1.0
+            seg_clipped_miles = seg.get("miles_driven", 0.0) * seg_fraction
+
             day_segments.append({
                 "duty_status": seg["duty_status"],
                 "start_hour": round(clipped_s / 60.0, 3),
@@ -132,11 +139,7 @@ def generate_daily_log_sheets(
                 "end_minute": clipped_e,
                 "duration_minutes": clipped_dur,
                 "duration_hours": round(clipped_dur / 60.0, 2),
-                "miles_driven": round(
-                    seg.get("miles_driven", 0.0) * (clipped_dur / (seg_e - seg_s))
-                    if seg_e > seg_s else 0.0,
-                    2
-                )
+                "miles_driven": round(seg_clipped_miles, 2)
             })
 
             # Add remark at start of duty status change if it occurs on this day
@@ -150,10 +153,15 @@ def generate_daily_log_sheets(
                 })
 
             if seg["duty_status"] == DutyStatus.DRIVING.value:
-                # Pro-rate miles driven for clipped driving segment
-                seg_total_dur = seg["end_min"] - seg["start_min"]
-                fraction = clipped_dur / seg_total_dur if seg_total_dur > 0 else 1.0
-                day_miles_driven += seg.get("miles_driven", 0.0) * fraction
+                day_miles_driven += seg_clipped_miles
+
+            # Chronological cycle tracking:
+            # A 34-hour restart resets the cycle only when it completes (at seg_e)
+            if seg.get("event_type") == EventType.CYCLE_RESTART_34.value:
+                if day_start_min < seg_e <= day_end_min:
+                    running_cycle_mins = 0
+            elif seg["duty_status"] in (DutyStatus.DRIVING.value, DutyStatus.ON_DUTY_NOT_DRIVING.value):
+                running_cycle_mins += clipped_dur
 
         # Calculate exact totals for the 4 status rows
         totals = {
@@ -175,17 +183,68 @@ def generate_daily_log_sheets(
             elif st == DutyStatus.ON_DUTY_NOT_DRIVING.value:
                 totals["on_duty_not_driving_minutes"] += dur
 
+        # Strict chronological continuity and duration integrity checks
+        if not day_segments:
+            raise ValueError(f"Daily log integrity failure for Day {day_num}: no segments generated.")
+
+        if day_segments[0]["start_minute"] != 0:
+            raise ValueError(
+                f"Daily log integrity failure for Day {day_num}: "
+                f"first segment starts at minute {day_segments[0]['start_minute']}, expected 0."
+            )
+
+        for idx in range(len(day_segments)):
+            cur_seg = day_segments[idx]
+            if cur_seg["duration_minutes"] <= 0:
+                raise ValueError(
+                    f"Daily log integrity failure for Day {day_num}: "
+                    f"segment {idx} has non-positive duration {cur_seg['duration_minutes']}."
+                )
+            if cur_seg["start_minute"] >= cur_seg["end_minute"]:
+                raise ValueError(
+                    f"Daily log integrity failure for Day {day_num}: "
+                    f"segment {idx} start_minute {cur_seg['start_minute']} >= end_minute {cur_seg['end_minute']}."
+                )
+            if cur_seg["duration_minutes"] != (cur_seg["end_minute"] - cur_seg["start_minute"]):
+                raise ValueError(
+                    f"Daily log integrity failure for Day {day_num}: "
+                    f"segment {idx} duration_minutes {cur_seg['duration_minutes']} != "
+                    f"(end_minute {cur_seg['end_minute']} - start_minute {cur_seg['start_minute']})."
+                )
+            if idx > 0:
+                prev_seg = day_segments[idx - 1]
+                if prev_seg["end_minute"] != cur_seg["start_minute"]:
+                    raise ValueError(
+                        f"Daily log integrity failure for Day {day_num}: "
+                        f"gap or overlap detected between segment {idx-1} (end {prev_seg['end_minute']}) "
+                        f"and segment {idx} (start {cur_seg['start_minute']})."
+                    )
+
+        if day_segments[-1]["end_minute"] != MINUTES_PER_DAY:
+            raise ValueError(
+                f"Daily log integrity failure for Day {day_num}: "
+                f"last segment ends at minute {day_segments[-1]['end_minute']}, expected {MINUTES_PER_DAY}."
+            )
+
+        sum_segment_durations = sum(s["duration_minutes"] for s in day_segments)
+        if sum_segment_durations != MINUTES_PER_DAY:
+            raise ValueError(
+                f"Daily log integrity failure for Day {day_num}: "
+                f"sum of segment durations {sum_segment_durations} != {MINUTES_PER_DAY}."
+            )
+
         total_day_minutes = sum(totals.values())
-        # Assert strictly 1,440 minutes
         if total_day_minutes != MINUTES_PER_DAY:
-            diff = MINUTES_PER_DAY - total_day_minutes
-            totals["off_duty_minutes"] += diff
+            raise ValueError(
+                f"Daily log integrity failure for Day {day_num}: "
+                f"sum of duty status totals {total_day_minutes} != {MINUTES_PER_DAY}."
+            )
 
         # On-duty today = driving + on-duty not driving
         on_duty_today_mins = totals["driving_minutes"] + totals["on_duty_not_driving_minutes"]
-        cycle_at_start_mins = cumulative_cycle_mins
-        cumulative_cycle_mins += on_duty_today_mins
+        cumulative_cycle_mins = running_cycle_mins
         avail_tomorrow_mins = max(0, (70 * 60) - cumulative_cycle_mins)
+        cycle_at_start_mins = cycle_at_day_start
 
         route_stops = [name for name in (origin_name, pickup_name, destination_name) if name]
         trip_route = " -> ".join(dict.fromkeys(route_stops))
@@ -224,3 +283,4 @@ def generate_daily_log_sheets(
         })
 
     return daily_logs
+
