@@ -1,161 +1,73 @@
 import React, { useState } from 'react';
-import { MapPin, Navigation, Clock, Play, RotateCcw, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Clock3, MapPin, PackageCheck, Play, Sparkles } from 'lucide-react';
 
 const PRESETS = [
-  {
-    label: "Short Trip (1 Day)",
-    current: "Chicago, IL",
-    pickup: "Indianapolis, IN",
-    dropoff: "Columbus, OH",
-    cycle: 15.0
-  },
-  {
-    label: "Midwest-South (2 Days)",
-    current: "Chicago, IL",
-    pickup: "Indianapolis, IN",
-    dropoff: "Atlanta, GA",
-    cycle: 24.5
-  },
-  {
-    label: "Coast-to-Coast (4 Days)",
-    current: "New York, NY",
-    pickup: "Chicago, IL",
-    dropoff: "Los Angeles, CA",
-    cycle: 35.0
-  }
+  { label: 'Quick one-day run', current: 'Chicago, IL', pickup: 'Indianapolis, IN', dropoff: 'Columbus, OH', cycle: 15 },
+  { label: 'Sample two-day trip', current: 'Chicago, IL', pickup: 'Indianapolis, IN', dropoff: 'Atlanta, GA', cycle: 24.5 },
+  { label: 'Long-haul example', current: 'New York, NY', pickup: 'Chicago, IL', dropoff: 'Los Angeles, CA', cycle: 35 }
 ];
 
-export default function TripInputForm({ onSubmit, isLoading }) {
-  const [currentLocation, setCurrentLocation] = useState("Chicago, IL");
-  const [pickupLocation, setPickupLocation] = useState("Indianapolis, IN");
-  const [dropoffLocation, setDropoffLocation] = useState("Atlanta, GA");
-  const [cycleUsed, setCycleUsed] = useState(24.5);
+const STEPS = [
+  { label: 'Start', icon: MapPin },
+  { label: 'Pickup', icon: PackageCheck },
+  { label: 'Delivery', icon: MapPin },
+  { label: 'Available hours', icon: Clock3 }
+];
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmit({
-      current_location: currentLocation,
-      pickup_location: pickupLocation,
-      dropoff_location: dropoffLocation,
-      current_cycle_used_hours: parseFloat(cycleUsed),
-      departure_time: new Date().toISOString()
-    });
-  };
+export default function TripInputForm({ onSubmit, isLoading, initialValues }) {
+  const [step, setStep] = useState(0);
+  const [currentLocation, setCurrentLocation] = useState(initialValues?.current || 'Chicago, IL');
+  const [pickupLocation, setPickupLocation] = useState(initialValues?.pickup || 'Indianapolis, IN');
+  const [dropoffLocation, setDropoffLocation] = useState(initialValues?.dropoff || 'Atlanta, GA');
+  const [cycleUsed, setCycleUsed] = useState(initialValues?.cycle || 24.5);
+
+  React.useEffect(() => {
+    if (initialValues) {
+      if (initialValues.current) setCurrentLocation(initialValues.current);
+      if (initialValues.pickup) setPickupLocation(initialValues.pickup);
+      if (initialValues.dropoff) setDropoffLocation(initialValues.dropoff);
+      if (initialValues.cycle !== undefined) setCycleUsed(initialValues.cycle);
+    }
+  }, [initialValues]);
 
   const applyPreset = (preset) => {
     setCurrentLocation(preset.current);
     setPickupLocation(preset.pickup);
     setDropoffLocation(preset.dropoff);
     setCycleUsed(preset.cycle);
+    setStep(0);
   };
 
-  return (
-    <div className="clay-card form-card">
-      <h2 className="form-title">
-        <Navigation size={20} color="#3b82f6" />
-        Trip Parameters
-      </h2>
+  const nextStep = () => {
+    const values = [currentLocation, pickupLocation, dropoffLocation];
+    if (step < 3 && values[step].trim()) setStep((value) => Math.min(value + 1, 3));
+  };
 
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label className="form-label">1. Current Location (Start)</label>
-          <div style={{ position: 'relative' }}>
-            <input
-              type="text"
-              className="clay-input"
-              value={currentLocation}
-              onChange={(e) => setCurrentLocation(e.target.value)}
-              placeholder="e.g. Chicago, IL"
-              required
-            />
-          </div>
-        </div>
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    if (step < 3) return nextStep();
+    onSubmit({ current_location: currentLocation, pickup_location: pickupLocation, dropoff_location: dropoffLocation, current_cycle_used_hours: parseFloat(cycleUsed), departure_time: new Date().toISOString() });
+  };
 
-        <div className="form-group">
-          <label className="form-label">2. Pickup Location (Shipper)</label>
-          <input
-            type="text"
-            className="clay-input"
-            value={pickupLocation}
-            onChange={(e) => setPickupLocation(e.target.value)}
-            placeholder="e.g. Indianapolis, IN"
-            required
-          />
-        </div>
+  const currentStep = STEPS[step];
+  const StepIcon = currentStep.icon;
 
-        <div className="form-group">
-          <label className="form-label">3. Dropoff Location (Receiver)</label>
-          <input
-            type="text"
-            className="clay-input"
-            value={dropoffLocation}
-            onChange={(e) => setDropoffLocation(e.target.value)}
-            placeholder="e.g. Atlanta, GA"
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-            <label className="form-label">4. Current Cycle Used (0–70 Hrs)</label>
-            <span style={{ fontWeight: 700, color: '#2563eb', fontFamily: 'JetBrains Mono, monospace' }}>
-              {parseFloat(cycleUsed).toFixed(1)} hrs
-            </span>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="70"
-            step="0.5"
-            value={cycleUsed}
-            onChange={(e) => setCycleUsed(e.target.value)}
-            style={{ width: '100%', accentColor: '#3b82f6', cursor: 'pointer' }}
-          />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)' }}>
-            <span>0 hrs (Fresh)</span>
-            <span>35 hrs</span>
-            <span>70 hrs (Max)</span>
-          </div>
-        </div>
-
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="clay-btn clay-btn-primary"
-          style={{ width: '100%', marginTop: '10px' }}
-        >
-          {isLoading ? (
-            <>
-              <RotateCcw size={18} className="animate-spin" />
-              Calculating Route & HOS Log...
-            </>
-          ) : (
-            <>
-              <Play size={18} />
-              Generate Trip & ELD Logs
-            </>
-          )}
-        </button>
-      </form>
-
-      <div style={{ marginTop: '22px', borderTop: '1px solid rgba(203, 213, 225, 0.5)', paddingTop: '16px' }}>
-        <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <Sparkles size={14} color="#f59e0b" />
-          Quick Test Presets
-        </div>
-        <div className="preset-pills">
-          {PRESETS.map((p, idx) => (
-            <button
-              key={idx}
-              type="button"
-              className="preset-pill"
-              onClick={() => applyPreset(p)}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </div>
+  return <div className="planner-form-card">
+    <div className="planner-stepper" aria-label="Trip planning progress">
+      {STEPS.map((item, index) => {
+        const Icon = item.icon;
+        return <React.Fragment key={item.label}><button type="button" className={`planner-step-dot ${index === step ? 'active' : ''} ${index < step ? 'complete' : ''}`} onClick={() => index <= step && setStep(index)} aria-current={index === step ? 'step' : undefined}>{index < step ? <Check size={14} /> : <Icon size={15} />}<span>{item.label}</span></button>{index < STEPS.length - 1 && <span className={`planner-step-line ${index < step ? 'complete' : ''}`} />}</React.Fragment>;
+      })}
     </div>
-  );
+
+    <form onSubmit={handleSubmit}>
+      <div className="planner-form-heading"><span className="planner-form-icon"><StepIcon size={21} /></span><div><span>Step {step + 1} of {STEPS.length}</span><h2>{step === 0 ? 'Where are you starting?' : step === 1 ? 'Where is the pickup?' : step === 2 ? 'Where is the delivery?' : 'How much time is already used?'}</h2></div></div>
+      {step === 0 && <div className="planner-field"><label htmlFor="current-location">Current location</label><p>This is where your truck is right now.</p><input id="current-location" autoFocus className="planner-input" value={currentLocation} onChange={(event) => setCurrentLocation(event.target.value)} placeholder="Example: Chicago, IL" required /></div>}
+      {step === 1 && <div className="planner-field"><label htmlFor="pickup-location">Pickup location</label><p>Where will the load be collected?</p><input id="pickup-location" autoFocus className="planner-input" value={pickupLocation} onChange={(event) => setPickupLocation(event.target.value)} placeholder="Example: Indianapolis, IN" required /></div>}
+      {step === 2 && <div className="planner-field"><label htmlFor="dropoff-location">Delivery location</label><p>Where does the load need to arrive?</p><input id="dropoff-location" autoFocus className="planner-input" value={dropoffLocation} onChange={(event) => setDropoffLocation(event.target.value)} placeholder="Example: Atlanta, GA" required /></div>}
+      {step === 3 && <div className="planner-field planner-hours-field"><div className="hours-title"><div><label htmlFor="cycle-hours">Hours used in your 70-hour cycle</label><p>Enter the on-duty hours already used in the current 8-day cycle.</p></div><strong>{Number(cycleUsed).toFixed(1)}<small> hrs</small></strong></div><input id="cycle-hours" className="planner-range" type="range" min="0" max="70" step="0.5" value={cycleUsed} onChange={(event) => setCycleUsed(event.target.value)} /><div className="range-labels"><span>0 hrs<br /><small>Fresh cycle</small></span><span>35 hrs</span><span>70 hrs<br /><small>Cycle limit</small></span></div><div className="hours-note"><Sparkles size={15} /> We’ll account for driving, breaks, fuel stops, pickup, and delivery time.</div></div>}
+      <div className="planner-form-actions">{step > 0 ? <button type="button" className="planner-back" onClick={() => setStep((value) => value - 1)}><ArrowLeft size={16} /> Back</button> : <span />}<button type="submit" className="planner-next" disabled={isLoading}>{isLoading ? 'Building your plan…' : step === 3 ? <><Play size={17} /> Build my trip plan</> : <>Continue <ArrowRight size={17} /></>}</button></div>
+    </form>
+    <div className="planner-presets"><span><Sparkles size={14} /> Want to explore first?</span><div>{PRESETS.map((preset) => <button key={preset.label} type="button" onClick={() => applyPreset(preset)}>{preset.label}</button>)}</div></div>
+  </div>;
 }

@@ -1,10 +1,10 @@
 import React from 'react';
 import { Truck, ShieldCheck, FileText, Navigation } from 'lucide-react';
 
-export default function Header() {
+export default function Header({ onHome }) {
   return (
     <header className="app-header clay-card">
-      <div className="brand-section">
+      <button className="brand-section dashboard-brand" onClick={onHome} title="Back to home">
         <div className="brand-icon">
           <Truck size={26} strokeWidth={2.2} />
         </div>
@@ -12,7 +12,7 @@ export default function Header() {
           <h1 className="brand-title">FMCSA ELD Trip Planner</h1>
           <p className="brand-subtitle">Automated 70-Hour / 8-Day HOS Compliance & Daily Log Sheet Generator</p>
         </div>
-      </div>
+      </button>
 
       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
         <span className="clay-pill clay-pill-blue">
