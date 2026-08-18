@@ -1,0 +1,213 @@
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from datetime import datetime
+
+from .serializers import PlanTripRequestSerializer
+from .services.geocoding import geocode_location, reverse_geocode, US_CITY_COORDINATES
+from .services.routing import get_osrm_route, create_route_interpolator
+from .services.hos_engine import (
+    schedule_fmcsa_trip,
+    RouteMilestone,
+    PICKUP_DURATION_MINUTES,
+    DROPOFF_DURATION_MINUTES,
+    DutyStatus,
+    EventType
+)
+from .services.log_generator import generate_daily_log_sheets
+
+
+class HealthCheckView(APIView):
+    def get(self, request):
+        return Response({
+            "status": "ok",
+            "service": "FMCSA ELD Trip Planner API",
+            "version": "1.0.0",
+            "timestamp": datetime.utcnow().isoformat() + "Z"
+        })
+
+
+class QuickCitiesView(APIView):
+    def get(self, request):
+        cities = [
+            {"name": "Chicago, IL", "display": "Chicago, IL"},
+            {"name": "Indianapolis, IN", "display": "Indianapolis, IN"},
+            {"name": "Atlanta, GA", "display": "Atlanta, GA"},
+            {"name": "Dallas, TX", "display": "Dallas, TX"},
+            {"name": "Los Angeles, CA", "display": "Los Angeles, CA"},
+            {"name": "New York, NY", "display": "New York, NY"},
+            {"name": "Columbus, OH", "display": "Columbus, OH"},
+            {"name": "Nashville, TN", "display": "Nashville, TN"},
+            {"name": "Denver, CO", "display": "Denver, CO"},
+            {"name": "Phoenix, AZ", "display": "Phoenix, AZ"},
+            {"name": "Seattle, WA", "display": "Seattle, WA"},
+            {"name": "Houston, TX", "display": "Houston, TX"},
+            {"name": "Miami, FL", "display": "Miami, FL"},
+        ]
+        return Response({"cities": cities})
+
+
+class PlanTripView(APIView):
+    def post(self, request):
+        serializer = PlanTripRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {"status": "error", "errors": serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        data = serializer.validated_data
+        curr_loc_str = data["current_location"]
+        pickup_loc_str = data["pickup_location"]
+        dropoff_loc_str = data["dropoff_location"]
+        cycle_used_hours = data["current_cycle_used_hours"]
+        start_time_iso = data.get("departure_time") or datetime.utcnow().isoformat() + "Z"
+
+        # 1. Geocode locations
+        try:
+            curr_lat, curr_lon, curr_name = geocode_location(curr_loc_str)
+            pick_lat, pick_lon, pick_name = geocode_location(pickup_loc_str)
+            drop_lat, drop_lon, drop_name = geocode_location(dropoff_loc_str)
+        except Exception as e:
+            return Response(
+                {"status": "error", "message": f"Geocoding error: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 2. Get OSRM routes for Leg 1 (Current -> Pickup) and Leg 2 (Pickup -> Dropoff)
+        leg1 = get_osrm_route((curr_lat, curr_lon), (pick_lat, pick_lon))
+        leg2 = get_osrm_route((pick_lat, pick_lon), (drop_lat, drop_lon))
+
+        total_route_miles = round(leg1["distance_miles"] + leg2["distance_miles"], 1)
+
+        # Merge coordinates for full route polyline
+        merged_coords = []
+        if leg1.get("geometry", {}).get("coordinates"):
+            merged_coords.extend(leg1["geometry"]["coordinates"])
+        if leg2.get("geometry", {}).get("coordinates"):
+            # Avoid duplicate connector point
+            coords2 = leg2["geometry"]["coordinates"]
+            if merged_coords and coords2 and merged_coords[-1] == coords2[0]:
+                merged_coords.extend(coords2[1:])
+            else:
+                merged_coords.extend(coords2)
+
+        # Create geometry interpolator
+        interpolator = create_route_interpolator(merged_coords, total_route_miles)
+
+        # 3. Create milestones for HOS engine
+        milestones = [
+            RouteMilestone(
+                name="Drive to Shipper (Pickup)",
+                milestone_type="DRIVE_LEG",
+                distance_miles=leg1["distance_miles"],
+                duration_minutes=leg1["duration_minutes"],
+                start_coords=(curr_lat, curr_lon),
+                end_coords=(pick_lat, pick_lon),
+                location_name=pick_name
+            ),
+            RouteMilestone(
+                name="Shipper Loading & Pickup",
+                milestone_type="TASK",
+                distance_miles=0.0,
+                duration_minutes=PICKUP_DURATION_MINUTES,
+                start_coords=(pick_lat, pick_lon),
+                end_coords=(pick_lat, pick_lon),
+                location_name=pick_name
+            ),
+            RouteMilestone(
+                name="Drive to Receiver (Dropoff)",
+                milestone_type="DRIVE_LEG",
+                distance_miles=leg2["distance_miles"],
+                duration_minutes=leg2["duration_minutes"],
+                start_coords=(pick_lat, pick_lon),
+                end_coords=(drop_lat, drop_lon),
+                location_name=drop_name
+            ),
+            RouteMilestone(
+                name="Receiver Unloading & Dropoff",
+                milestone_type="TASK",
+                distance_miles=0.0,
+                duration_minutes=DROPOFF_DURATION_MINUTES,
+                start_coords=(drop_lat, drop_lon),
+                end_coords=(drop_lat, drop_lon),
+                location_name=drop_name
+            ),
+        ]
+
+        # 4. Run HOS simulation engine
+        initial_cycle_used_minutes = int(round(cycle_used_hours * 60))
+        events = schedule_fmcsa_trip(
+            milestones=milestones,
+            current_cycle_used_minutes=initial_cycle_used_minutes,
+            start_time_iso=start_time_iso,
+            interpolate_coords_fn=interpolator
+        )
+
+        # 5. Generate daily 24-hour log sheets
+        daily_logs = generate_daily_log_sheets(
+            events=events,
+            start_time_iso=start_time_iso,
+            initial_cycle_used_minutes=initial_cycle_used_minutes
+        )
+
+        # 6. Calculate comprehensive KPI summary
+        total_drive_mins = sum(e.duration_minutes for e in events if e.duty_status == DutyStatus.DRIVING.value)
+        total_trip_mins = events[-1].end_minutes if events else 0
+        total_on_duty_mins = sum(e.duration_minutes for e in events if e.duty_status in [DutyStatus.DRIVING.value, DutyStatus.ON_DUTY_NOT_DRIVING.value])
+        
+        fuel_stops_count = sum(1 for e in events if e.event_type == EventType.FUEL_STOP.value)
+        rest_breaks_count = sum(1 for e in events if e.event_type == EventType.REST_BREAK_30.value)
+        sleeper_resets_count = sum(1 for e in events if e.event_type == EventType.SLEEPER_RESET_10.value)
+        cycle_restarts_count = sum(1 for e in events if e.event_type == EventType.CYCLE_RESTART_34.value)
+
+        cycle_added_hours = round(total_on_duty_mins / 60.0, 2)
+        ending_cycle_hours = round(min(70.0, cycle_used_hours + cycle_added_hours), 2)
+        remaining_cycle_hours = round(max(0.0, 70.0 - ending_cycle_hours), 2)
+
+        merged_steps = []
+        if leg1.get("steps"):
+            merged_steps.extend(leg1["steps"])
+        merged_steps.append({"instruction": f"Arrived at Shipper in {pick_name} (1-hour On-Duty Pickup)", "distance_miles": 0, "duration_minutes": 60})
+        if leg2.get("steps"):
+            merged_steps.extend(leg2["steps"])
+        merged_steps.append({"instruction": f"Arrived at Receiver in {drop_name} (1-hour On-Duty Dropoff)", "distance_miles": 0, "duration_minutes": 60})
+
+        response_payload = {
+            "status": "success",
+            "summary": {
+                "total_distance_miles": total_route_miles,
+                "total_drive_time_minutes": total_drive_mins,
+                "total_drive_time_hours": round(total_drive_mins / 60.0, 2),
+                "total_trip_duration_minutes": total_trip_mins,
+                "total_trip_duration_hours": round(total_trip_mins / 60.0, 2),
+                "total_fuel_stops": fuel_stops_count,
+                "total_rest_breaks": rest_breaks_count,
+                "total_sleeper_resets": sleeper_resets_count,
+                "total_cycle_restarts": cycle_restarts_count,
+                "cycle_hours_at_start": round(cycle_used_hours, 2),
+                "cycle_hours_added": cycle_added_hours,
+                "cycle_hours_ending": ending_cycle_hours,
+                "cycle_hours_remaining": remaining_cycle_hours,
+                "days_required": len(daily_logs)
+            },
+            "locations": {
+                "current": {"name": curr_name, "lat": curr_lat, "lng": curr_lon},
+                "pickup": {"name": pick_name, "lat": pick_lat, "lng": pick_lon},
+                "dropoff": {"name": drop_name, "lat": drop_lat, "lng": drop_lon}
+            },
+            "route_geometry": {
+                "type": "LineString",
+                "coordinates": merged_coords
+            },
+            "turn_by_turn_steps": merged_steps,
+            "events": [e.to_dict() for e in events],
+            "daily_logs": daily_logs,
+            "disclaimers": {
+                "routing": "Route generated with OpenStreetMap road data. For commercial vehicles, please verify clearance, bridge weight, and hazmat restrictions.",
+                "recap": "Conservative cycle calculation assuming no prior hours drop off in the rolling window.",
+                "attribution": "Routing data © OpenStreetMap contributors, OSRM Project."
+            }
+        }
+
+        return Response(response_payload, status=status.HTTP_200_OK)
