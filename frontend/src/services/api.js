@@ -51,3 +51,53 @@ export async function fetchQuickCities() {
     { name: "New York, NY", display: "New York, NY" },
   ];
 }
+
+export async function fetchTrips() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/trips/`);
+    if (response.ok) {
+      const data = await response.json();
+      return data.trips || [];
+    }
+  } catch (err) {
+    console.warn('Failed to fetch trips from backend, using local state fallback');
+  }
+  return null;
+}
+
+export async function fetchTripById(tripId) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/trips/${tripId}/`);
+    if (response.ok) {
+      return await response.json();
+    }
+  } catch (err) {
+    console.warn('Failed to fetch trip by id from backend');
+  }
+  return null;
+}
+
+export async function deleteTripApi(tripId) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/trips/${tripId}/`, {
+      method: 'DELETE',
+    });
+    return response.ok;
+  } catch (err) {
+    console.warn('Failed to delete trip from backend');
+    return false;
+  }
+}
+
+export async function fetchLogs() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/logs/`);
+    if (response.ok) {
+      const data = await response.json();
+      return data.logs || [];
+    }
+  } catch (err) {
+    console.warn('Failed to fetch logs from backend');
+  }
+  return null;
+}

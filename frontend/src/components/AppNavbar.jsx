@@ -19,6 +19,7 @@ export default function AppNavbar() {
   const navLinks = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/plan', label: 'Plan a Trip', icon: PlusCircle },
+    { to: '/logs', label: 'Daily Logs', icon: FileText },
   ];
 
   return (

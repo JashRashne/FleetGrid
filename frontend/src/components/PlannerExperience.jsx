@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   AlertCircle, ArrowLeft, CalendarDays, CheckCircle2, Clock3, FileText,
   LayoutDashboard, ListChecks, Map, MapPinned, Navigation, Route, ShieldCheck, Sparkles, Truck, PlusCircle
@@ -12,7 +12,7 @@ import EventTimeline from './EventTimeline';
 import RouteDirections from './RouteDirections';
 import LogSheetViewer from './LogSheetViewer';
 import AppNavbar from './AppNavbar';
-import { planTrip } from '../services/api';
+import { planTrip, fetchTripById } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 const RESULT_TABS = [
@@ -23,6 +23,7 @@ const RESULT_TABS = [
 ];
 
 export default function PlannerExperience() {
+  const { tripId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const { saveTrip, isAuthenticated } = useAuth();
@@ -41,11 +42,19 @@ export default function PlannerExperience() {
     if (location.state?.loadTrip) {
       setTripData(location.state.loadTrip);
       setActiveTab('overview');
+    } else if (tripId) {
+      setIsLoading(true);
+      fetchTripById(tripId).then(data => {
+        if (data) {
+          setTripData(data);
+          setActiveTab('overview');
+        }
+      }).finally(() => setIsLoading(false));
     }
     if (location.state?.prefill) {
       setPrefill(location.state.prefill);
     }
-  }, [location.state]);
+  }, [location.state, tripId]);
 
   const handlePlanTrip = async (formData) => {
     setIsLoading(true);

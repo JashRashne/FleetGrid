@@ -1585,3 +1585,350 @@ body {
   }
 }
 
+/* ==========================================================================
+   LOGS HUB PAGE & PRINT/PDF EXPORT STYLES
+   ========================================================================== */
+.logs-hub-page {
+  min-height: 100vh;
+  background: #fbf7ee;
+  color: #234239;
+  padding-bottom: 80px;
+}
+
+.logs-hub-main {
+  width: min(1240px, calc(100% - 48px));
+  margin: 30px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.logs-hero-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 28px 36px;
+  border-radius: 26px;
+  background: linear-gradient(130deg, #e4f3e8 0%, #d8eee0 100%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 10px 24px rgba(60, 85, 70, 0.08), inset 1px 1px 2px white;
+}
+
+.logs-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  background: rgba(255, 255, 255, 0.75);
+  color: #228c6c;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.logs-hero-left h1 {
+  font-size: 28px;
+  color: #1e3f34;
+  letter-spacing: -1px;
+  margin: 0 0 6px;
+}
+
+.logs-hero-left p {
+  color: #5d7c71;
+  font-size: 13px;
+  max-width: 680px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.btn-print-log {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 20px;
+  background: #234238;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  border: 0;
+  border-radius: 13px;
+  cursor: pointer;
+  box-shadow: 0 5px 12px rgba(30, 60, 50, 0.2);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-print-log:hover {
+  background: #142822;
+  transform: translateY(-1px);
+}
+
+.logs-content-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.logs-selector-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sidebar-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #258c6d;
+}
+
+.sidebar-title h3 {
+  font-size: 15px;
+  color: #1e3f34;
+  margin: 0;
+}
+
+.log-sheets-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.log-sheet-tab-btn {
+  background: #ffffff;
+  border: 1px solid rgba(64, 102, 84, 0.12);
+  border-radius: 16px;
+  padding: 14px 16px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.log-sheet-tab-btn:hover {
+  border-color: #8ed2ab;
+  transform: translateX(2px);
+}
+
+.log-sheet-tab-btn.active {
+  background: #f0faf4;
+  border-color: #2b9d79;
+  box-shadow: 0 4px 12px rgba(43, 157, 121, 0.12);
+}
+
+.tab-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tab-day-badge {
+  font-size: 12px;
+  font-weight: 800;
+  color: #1f3e34;
+}
+
+.tab-date {
+  font-size: 11px;
+  color: #728f83;
+}
+
+.tab-route {
+  font-size: 11px;
+  color: #23896b;
+  font-weight: 600;
+}
+
+.tab-hours-summary {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: #638075;
+}
+
+.tab-hours-summary b {
+  color: #213f36;
+}
+
+.compliance-cert-card {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 18px;
+  border: 1px solid rgba(64, 102, 84, 0.1);
+  box-shadow: 0 4px 12px rgba(60, 80, 70, 0.04);
+}
+
+.cert-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #248b6b;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.compliance-cert-card p {
+  font-size: 11px;
+  color: #6d897f;
+  font-style: italic;
+  line-height: 1.4;
+  margin: 0 0 10px;
+}
+
+.driver-signature-preview {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.sig-label {
+  color: #8fa69c;
+}
+
+.sig-name {
+  color: #1a4f3f;
+  font-weight: 800;
+  font-family: 'Brush Script MT', cursive, serif;
+  font-size: 16px;
+}
+
+.active-log-sheet-container {
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 24px;
+  border: 1px solid rgba(64, 102, 84, 0.1);
+  box-shadow: 0 8px 24px rgba(60, 80, 70, 0.06);
+}
+
+.sheet-top-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #edf4ee;
+}
+
+.sheet-meta h2 {
+  font-size: 18px;
+  color: #1e3f34;
+  margin: 0 0 4px;
+}
+
+.sheet-meta span {
+  font-size: 12px;
+  color: #68857a;
+}
+
+.sheet-meta b {
+  color: #234338;
+}
+
+.btn-print-compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: #eef7f1;
+  color: #1f7d61;
+  font-size: 12px;
+  font-weight: 800;
+  border: 1px solid #cce5d4;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-print-compact:hover {
+  background: #e1f2e6;
+}
+
+.printable-log-sheet-area {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.empty-logs-state {
+  background: #ffffff;
+  border-radius: 26px;
+  padding: 60px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #79958a;
+  border: 1px solid rgba(64, 102, 84, 0.1);
+}
+
+.empty-logs-state h2 {
+  font-size: 20px;
+  color: #214036;
+  margin: 4px 0 0;
+}
+
+.empty-logs-state p {
+  font-size: 13px;
+  max-width: 420px;
+  margin: 0 0 16px;
+}
+
+/* Print Stylesheet for FMCSA DOT Inspections */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .app-navbar,
+  .logs-hero-banner,
+  .logs-selector-sidebar,
+  .sheet-top-controls button,
+  .planner-results-topbar,
+  .planner-tabs,
+  .landing-nav,
+  .landing-footer,
+  .logout-btn,
+  .btn-print-log,
+  .btn-print-compact,
+  .btn-plan-primary {
+    display: none !important;
+  }
+
+  .logs-content-layout {
+    display: block !important;
+  }
+
+  .active-log-sheet-container {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+
+  .svg-log-wrapper {
+    page-break-inside: avoid;
+    width: 100% !important;
+  }
+
+  @page {
+    size: landscape;
+    margin: 10mm;
+  }
+}
+
+@media (max-width: 860px) {
+  .logs-content-layout {
+    grid-template-columns: 1fr;
+  }
+  
+  .logs-hero-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

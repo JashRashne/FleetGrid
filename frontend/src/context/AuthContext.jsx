@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { fetchTrips, deleteTripApi } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -89,6 +90,35 @@ export function AuthProvider({ children }) {
     }
   });
 
+  // Fetch backend trips on load
+  useEffect(() => {
+    async function loadBackendTrips() {
+      const backendTrips = await fetchTrips();
+      if (backendTrips && backendTrips.length > 0) {
+        // Format to match frontend expectations
+        const formatted = backendTrips.map(t => ({
+          id: t.id,
+          createdAt: t.created_at,
+          locations: t.locations_json || {
+            current: { name: t.origin_name },
+            pickup: { name: t.pickup_name },
+            dropoff: { name: t.dropoff_name }
+          },
+          summary: t.summary_json || {
+            total_miles: t.total_distance_miles,
+            total_duration_hours: t.total_trip_duration_hours,
+            driving_hours: t.total_drive_time_hours,
+            days_required: t.days_required,
+            fuel_stops_count: t.fuel_stops_count,
+            is_compliant: true
+          }
+        }));
+        setSavedTrips(formatted);
+      }
+    }
+    loadBackendTrips();
+  }, []);
+
   useEffect(() => {
     if (user) {
       localStorage.setItem('milemint_user', JSON.stringify(user));
@@ -130,20 +160,21 @@ export function AuthProvider({ children }) {
 
   const saveTrip = (tripData) => {
     const newTrip = {
-      id: `trip_${Date.now()}`,
-      createdAt: new Date().toISOString(),
+      id: tripData.id || `trip_${Date.now()}`,
+      createdAt: tripData.created_at || new Date().toISOString(),
       ...tripData
     };
-    setSavedTrips(prev => [newTrip, ...prev]);
+    setSavedTrips(prev => [newTrip, ...prev.filter(t => t.id !== newTrip.id)]);
     setActiveTrip(newTrip);
     return newTrip;
   };
 
-  const deleteTrip = (tripId) => {
+  const deleteTrip = async (tripId) => {
     setSavedTrips(prev => prev.filter(t => t.id !== tripId));
     if (activeTrip?.id === tripId) {
       setActiveTrip(null);
     }
+    await deleteTripApi(tripId);
   };
 
   return (

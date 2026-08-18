@@ -5,6 +5,7 @@ import LandingPage from './components/LandingPage';
 import AuthPage from './components/AuthPage';
 import DashboardPage from './components/DashboardPage';
 import PlannerExperience from './components/PlannerExperience';
+import LogsHubPage from './components/LogsHubPage';
 
 export default function App() {
   return (
@@ -20,8 +21,14 @@ export default function App() {
           {/* Driver Dashboard */}
           <Route path="/dashboard" element={<DashboardPage />} />
 
-          {/* Trip Planner & Logsheets */}
+          {/* Trip Planner */}
           <Route path="/plan" element={<PlannerExperience />} />
+
+          {/* Specific Trip Result by UUID */}
+          <Route path="/trip/:tripId" element={<PlannerExperience />} />
+
+          {/* Dedicated ELD Daily Logs Hub */}
+          <Route path="/logs" element={<LogsHubPage />} />
 
           {/* Catch-all redirect to Home */}
           <Route path="*" element={<Navigate to="/" replace />} />
