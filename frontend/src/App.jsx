@@ -1,11 +1,26 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import LandingPage from './components/LandingPage';
 import AuthPage from './components/AuthPage';
 import DashboardPage from './components/DashboardPage';
 import PlannerExperience from './components/PlannerExperience';
 import LogsHubPage from './components/LogsHubPage';
+
+/**
+ * Route protection wrapper:
+ * Redirects unauthenticated visitors to /login and preserves their intended target route in state.
+ */
+function ProtectedRoute({ children }) {
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
+}
 
 export default function App() {
   return (
@@ -15,20 +30,48 @@ export default function App() {
           {/* Public Landing Page */}
           <Route path="/" element={<LandingPage />} />
 
-          {/* Authentication Page */}
+          {/* Public Authentication Page */}
           <Route path="/login" element={<AuthPage />} />
 
-          {/* Driver Dashboard */}
-          <Route path="/dashboard" element={<DashboardPage />} />
+          {/* Protected Driver Dashboard */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
 
-          {/* Trip Planner */}
-          <Route path="/plan" element={<PlannerExperience />} />
+          {/* Protected Trip Planner */}
+          <Route
+            path="/plan"
+            element={
+              <ProtectedRoute>
+                <PlannerExperience />
+              </ProtectedRoute>
+            }
+          />
 
-          {/* Specific Trip Result by UUID */}
-          <Route path="/trip/:tripId" element={<PlannerExperience />} />
+          {/* Protected Trip Result by UUID */}
+          <Route
+            path="/trip/:tripId"
+            element={
+              <ProtectedRoute>
+                <PlannerExperience />
+              </ProtectedRoute>
+            }
+          />
 
-          {/* Dedicated ELD Daily Logs Hub */}
-          <Route path="/logs" element={<LogsHubPage />} />
+          {/* Protected ELD Daily Logs Hub */}
+          <Route
+            path="/logs"
+            element={
+              <ProtectedRoute>
+                <LogsHubPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Catch-all redirect to Home */}
           <Route path="*" element={<Navigate to="/" replace />} />

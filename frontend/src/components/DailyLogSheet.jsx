@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function DailyLogSheet({ logData, dayIndex, totalDays }) {
+export default function DailyLogSheet({ logData, dayIndex = 0, totalDays = 1 }) {
   if (!logData) return null;
 
   const width = 960;
@@ -18,12 +18,24 @@ export default function DailyLogSheet({ logData, dayIndex, totalDays }) {
   };
   const gridBottomY = 160 + rowHeight * 4;
 
-  const hourToX = (hour) => gridX + (hour / 24.0) * gridWidth;
+  const hourToX = (hour) => gridX + (Math.max(0, Math.min(24, Number(hour) || 0)) / 24.0) * gridWidth;
+
+  // Normalize segments
+  const rawSegments = logData.segments || logData.duty_segments || logData.grid_intervals || [];
+  let segments = rawSegments.map((seg) => ({
+    start_hour: seg.start_hour !== undefined ? Number(seg.start_hour) : (seg.start_min !== undefined ? seg.start_min / 60 : 0),
+    end_hour: seg.end_hour !== undefined ? Number(seg.end_hour) : (seg.end_min !== undefined ? seg.end_min / 60 : 24),
+    duty_status: seg.duty_status || 'OFF_DUTY',
+    remark: seg.remark || '',
+    location: seg.location || ''
+  }));
+
+  if (segments.length === 0) {
+    segments = [{ start_hour: 0, end_hour: 24, duty_status: 'OFF_DUTY' }];
+  }
 
   // Build the continuous stepped line path across 24 hours
-  const segments = logData.segments || [];
   let pathD = "";
-
   segments.forEach((seg, idx) => {
     const x1 = hourToX(seg.start_hour);
     const x2 = hourToX(seg.end_hour);
@@ -32,10 +44,34 @@ export default function DailyLogSheet({ logData, dayIndex, totalDays }) {
     if (idx === 0) {
       pathD += `M ${x1} ${y} L ${x2} ${y}`;
     } else {
-      // Step from previous point: vertical transition line then horizontal active duty line
       pathD += ` L ${x1} ${y} L ${x2} ${y}`;
     }
   });
+
+  const dateStr = logData.date || logData.log_date || "2026-08-18";
+  const driverName = logData.driver_name || "Alex Morgan";
+  const carrierName = logData.carrier_name || "MileMint Logistics LLC";
+  const truckNumber = logData.truck_number || logData.truck_id || "TRK-9042";
+  const trailerNumber = logData.trailer_number || logData.trailer_id || "TLR-5510";
+  const totalMilesToday = logData.total_miles_driving_today !== undefined ? logData.total_miles_driving_today : (logData.miles_driven || 0);
+  const mainOffice = logData.main_office_address || "100 Logistics Blvd, Suite 400, Chicago, IL";
+  const homeTerminal = logData.home_terminal_address || "770 Freight Way, Chicago, IL";
+
+  const totalsHours = logData.totals_hours || {
+    off_duty: logData.totals?.OFF_DUTY !== undefined ? logData.totals.OFF_DUTY : (logData.total_off_duty_hours || 0),
+    sleeper_berth: logData.totals?.SLEEPER_BERTH !== undefined ? logData.totals.SLEEPER_BERTH : (logData.total_sleeper_hours || 0),
+    driving: logData.totals?.DRIVING !== undefined ? logData.totals.DRIVING : (logData.total_driving_hours || 0),
+    on_duty_not_driving: logData.totals?.ON_DUTY_NOT_DRIVING !== undefined ? logData.totals.ON_DUTY_NOT_DRIVING : (logData.total_on_duty_hours || 0),
+    total: 24.0
+  };
+
+  const remarks = logData.remarks || [];
+  const recap = logData.recap || {
+    on_duty_today_hours: Number((Number(totalsHours.driving || 0) + Number(totalsHours.on_duty_not_driving || 0)).toFixed(1)),
+    cycle_hours_at_start: 24.5,
+    cycle_hours_cumulative: Number((24.5 + Number(totalsHours.driving || 0) + Number(totalsHours.on_duty_not_driving || 0)).toFixed(1)),
+    cycle_hours_remaining: Math.max(0, Number((70.0 - (24.5 + Number(totalsHours.driving || 0) + Number(totalsHours.on_duty_not_driving || 0))).toFixed(1)))
+  };
 
   return (
     <div className="svg-log-wrapper">
@@ -51,7 +87,7 @@ export default function DailyLogSheet({ logData, dayIndex, totalDays }) {
           Driver's Daily Log
         </text>
         <text x="235" y="32" fontSize="13" fontWeight="500" fill="#64748b">
-          (24 hours) — Day {logData.day_number} of {totalDays}
+          (24 hours) — Day {logData.day_number || dayIndex + 1} of {totalDays || 1}
         </text>
 
         <text x="580" y="24" fontSize="11" fill="#475569">
@@ -63,16 +99,16 @@ export default function DailyLogSheet({ logData, dayIndex, totalDays }) {
 
         {/* Date, Carrier, Driver Info */}
         <g fontSize="12" fill="#1e293b">
-          <text x="30" y="65" fontWeight="600">Date: <tspan fontWeight="700" fill="#2563eb">{logData.date}</tspan></text>
-          <text x="240" y="65" fontWeight="600">Driver Name: <tspan fontWeight="500">{logData.driver_name}</tspan></text>
-          <text x="580" y="65" fontWeight="600">Carrier: <tspan fontWeight="500">{logData.carrier_name}</tspan></text>
+          <text x="30" y="65" fontWeight="600">Date: <tspan fontWeight="700" fill="#2563eb">{dateStr}</tspan></text>
+          <text x="240" y="65" fontWeight="600">Driver Name: <tspan fontWeight="500">{driverName}</tspan></text>
+          <text x="580" y="65" fontWeight="600">Carrier: <tspan fontWeight="500">{carrierName}</tspan></text>
 
-          <text x="30" y="90" fontWeight="600">Truck / Tractor #: <tspan fontWeight="500">{logData.truck_number}</tspan></text>
-          <text x="240" y="90" fontWeight="600">Trailer #: <tspan fontWeight="500">{logData.trailer_number}</tspan></text>
-          <text x="580" y="90" fontWeight="600">Miles Driving Today: <tspan fontWeight="700" fill="#2563eb">{logData.total_miles_driving_today} mi</tspan></text>
+          <text x="30" y="90" fontWeight="600">Truck / Tractor #: <tspan fontWeight="500">{truckNumber}</tspan></text>
+          <text x="240" y="90" fontWeight="600">Trailer #: <tspan fontWeight="500">{trailerNumber}</tspan></text>
+          <text x="580" y="90" fontWeight="600">Miles Driving Today: <tspan fontWeight="700" fill="#2563eb">{totalMilesToday} mi</tspan></text>
 
-          <text x="30" y="112" fontSize="11" fill="#64748b">Main Office Address: {logData.main_office_address}</text>
-          <text x="580" y="112" fontSize="11" fill="#64748b">Home Terminal: {logData.home_terminal_address}</text>
+          <text x="30" y="112" fontSize="11" fill="#64748b">Main Office Address: {mainOffice}</text>
+          <text x="580" y="112" fontSize="11" fill="#64748b">Home Terminal: {homeTerminal}</text>
         </g>
 
         {/* 2. Graph Grid Header (Hour Numbers) */}
@@ -112,7 +148,7 @@ export default function DailyLogSheet({ logData, dayIndex, totalDays }) {
           { label: "4. On Duty (not driving)", key: "on_duty_not_driving", y: rowYs.ON_DUTY_NOT_DRIVING },
         ].map((row, idx) => {
           const topY = 160 + idx * rowHeight;
-          const val = logData.totals_hours[row.key] || 0;
+          const val = Number(totalsHours[row.key]) || 0;
 
           return (
             <g key={row.key}>
@@ -196,8 +232,9 @@ export default function DailyLogSheet({ logData, dayIndex, totalDays }) {
         </text>
 
         {/* Remarks Drop Lines & Badges */}
-        {(logData.remarks || []).map((rem, remIdx) => {
-          const rx = hourToX(rem.time_hour);
+        {remarks.map((rem, remIdx) => {
+          const timeH = rem.time_hour !== undefined ? Number(rem.time_hour) : (rem.time_min !== undefined ? rem.time_min / 60 : 0);
+          const rx = hourToX(timeH);
           const remY = 355 + (remIdx % 4) * 32;
 
           return (
@@ -231,7 +268,7 @@ export default function DailyLogSheet({ logData, dayIndex, totalDays }) {
                 fontWeight="600"
                 fill="#1e293b"
               >
-                <tspan fill="#2563eb" fontWeight="700">{rem.time_hour.toFixed(1)}h:</tspan> {rem.text} ({rem.location})
+                <tspan fill="#2563eb" fontWeight="700">{timeH.toFixed(1)}h:</tspan> {rem.text || rem.remark || 'Duty Status Change'} ({rem.location || ''})
               </text>
             </g>
           );
@@ -251,7 +288,7 @@ export default function DailyLogSheet({ logData, dayIndex, totalDays }) {
             <text x="30" y="56" fontWeight="600">On-Duty Hours Today</text>
             <text x="30" y="74" fontSize="10" fill="#94a3b8">(Lines 3 & 4)</text>
             <text x="180" y="74" fontSize="16" fontWeight="800" fill="#0f172a" textAnchor="end">
-              {logData.recap?.on_duty_today_hours} hrs
+              {recap.on_duty_today_hours} hrs
             </text>
 
             {/* Col 2: Cycle at Start */}
@@ -259,7 +296,7 @@ export default function DailyLogSheet({ logData, dayIndex, totalDays }) {
             <text x="222" y="56" fontWeight="600">Cycle at Start of Day</text>
             <text x="222" y="74" fontSize="10" fill="#94a3b8">(Input / Prior)</text>
             <text x="372" y="74" fontSize="16" fontWeight="800" fill="#2563eb" textAnchor="end">
-              {logData.recap?.cycle_hours_at_start} hrs
+              {recap.cycle_hours_at_start} hrs
             </text>
 
             {/* Col 3: Cumulative Cycle */}
@@ -267,7 +304,7 @@ export default function DailyLogSheet({ logData, dayIndex, totalDays }) {
             <text x="414" y="56" fontWeight="600">Cumulative Cycle Used</text>
             <text x="414" y="74" fontSize="10" fill="#94a3b8">(Max 70.0 hrs limit)</text>
             <text x="604" y="74" fontSize="16" fontWeight="800" fill="#0f172a" textAnchor="end">
-              {logData.recap?.cycle_hours_cumulative} / 70.0 h
+              {recap.cycle_hours_cumulative} / 70.0 h
             </text>
 
             {/* Col 4: Hours Available Tomorrow */}
@@ -275,7 +312,7 @@ export default function DailyLogSheet({ logData, dayIndex, totalDays }) {
             <text x="646" y="56" fontWeight="600">Hours Available Tomorrow</text>
             <text x="646" y="74" fontSize="10" fill="#94a3b8">(70.0 minus Cumulative)</text>
             <text x="866" y="74" fontSize="16" fontWeight="800" fill="#16a34a" textAnchor="end">
-              {logData.recap?.cycle_hours_remaining} hrs
+              {recap.cycle_hours_remaining} hrs
             </text>
           </g>
         </g>

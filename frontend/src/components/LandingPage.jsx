@@ -91,7 +91,7 @@ export default function LandingPage() {
     if (isAuthenticated) {
       navigate('/dashboard');
     } else {
-      navigate('/plan');
+      navigate('/login', { state: { from: { pathname: '/plan' } } });
     }
   };
 

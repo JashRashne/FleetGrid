@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Truck, ArrowRight, ShieldCheck, CheckCircle2, 
-  Lock, Mail, User, Sparkles, ArrowLeft, Clock3,
-  Route, FileText, Check, Star
+  Lock, Mail, User, Sparkles, ArrowLeft,
+  Check, Star
 } from 'lucide-react';
 import plannerOnboardingClay from '../assets/planner-onboarding-clay.png';
 import { useAuth } from '../context/AuthContext';
@@ -20,9 +20,11 @@ export default function AuthPage() {
   const [isRegister, setIsRegister] = useState(false);
 
   // If already authenticated, redirect
-  if (isAuthenticated) {
-    navigate('/dashboard', { replace: true });
-  }
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, from]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -32,7 +34,7 @@ export default function AuthPage() {
 
   const handleDemoLogin = () => {
     loginDemo();
-    navigate('/dashboard', { replace: true });
+    navigate(from, { replace: true });
   };
 
   return (
@@ -41,18 +43,17 @@ export default function AuthPage() {
       <aside className="auth-showcase-panel">
         <div className="showcase-header">
           <Link to="/" className="showcase-brand">
-            <span className="showcase-logo-mark"><Truck size={22} /></span>
+            <span className="showcase-logo-mark"><Truck size={20} /></span>
             <span className="showcase-brand-text">mile<span>mint</span></span>
             <span className="showcase-badge">ELD</span>
           </Link>
+          <span className="showcase-tag">
+            <Sparkles size={13} />
+            <span>Built for Drivers</span>
+          </span>
         </div>
 
         <div className="showcase-content">
-          <div className="showcase-tag">
-            <Sparkles size={14} />
-            <span>Built for Commercial Drivers</span>
-          </div>
-
           <h1 className="showcase-heading">
             Compliant routes,<br />
             calm hours, and<br />
@@ -60,21 +61,21 @@ export default function AuthPage() {
           </h1>
 
           <p className="showcase-sub">
-            The modern ELD trip planner designed around 49 CFR Part 395 regulations. Plan your driving windows, mandatory rest breaks, and fuel stops in seconds.
+            The modern ELD trip planner designed around 49 CFR Part 395 rules. Plan your driving windows, breaks, and fuel stops in seconds.
           </p>
 
           <div className="showcase-highlights">
             <div className="highlight-item">
-              <span className="hl-icon"><Check size={14} /></span>
-              <span>70-Hour / 8-Day property rule compliance calculated automatically</span>
+              <span className="hl-icon"><Check size={13} /></span>
+              <span>70-Hour / 8-Day property rules calculated automatically</span>
             </div>
             <div className="highlight-item">
-              <span className="hl-icon"><Check size={14} /></span>
-              <span>Mandatory 30-min breaks & 10-hr sleeper berth resets scheduled</span>
+              <span className="hl-icon"><Check size={13} /></span>
+              <span>30-min breaks & 10-hr sleeper berth resets scheduled</span>
             </div>
             <div className="highlight-item">
-              <span className="hl-icon"><Check size={14} /></span>
-              <span>24-Hour FMCSA daily logbook sheets generated with export & print</span>
+              <span className="hl-icon"><Check size={13} /></span>
+              <span>24-Hour FMCSA daily logbook sheets with print export</span>
             </div>
           </div>
 
@@ -82,25 +83,21 @@ export default function AuthPage() {
             <img 
               src={plannerOnboardingClay} 
               alt="MileMint ELD Planning Platform" 
-              className="showcase-art"
+              className="showcase-art" 
             />
-          </div>
-
-          <div className="showcase-testimonial">
-            <div className="testimonial-stars">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} size={13} fill="#f59e0b" color="#f59e0b" />
-              ))}
-            </div>
-            <p>"Takes the guesswork out of my clock calculations before I hit the interstate."</p>
-            <div className="testimonial-author">
-              <b>Alex M.</b> · <span>Independent Owner-Operator (Chicago, IL)</span>
-            </div>
           </div>
         </div>
 
         <div className="showcase-footer">
-          <span>© 2026 MileMint ELD Technologies Inc.</span>
+          <div className="showcase-testimonial-compact">
+            <div className="testimonial-stars">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} size={12} fill="#f59e0b" color="#f59e0b" />
+              ))}
+            </div>
+            <span>"Takes the guesswork out of my log clock calculations." — <b>Alex M., CDL-A</b></span>
+          </div>
+          <small>© 2026 MileMint Technologies</small>
         </div>
       </aside>
 
@@ -108,18 +105,18 @@ export default function AuthPage() {
       <main className="auth-form-panel">
         <div className="auth-form-top-nav">
           <Link to="/" className="auth-nav-back">
-            <ArrowLeft size={15} />
+            <ArrowLeft size={14} />
             <span>Back to Home</span>
           </Link>
           <span className="auth-nav-badge">
-            <ShieldCheck size={14} /> FMCSA 49 CFR § 395
+            <ShieldCheck size={13} /> FMCSA 49 CFR § 395
           </span>
         </div>
 
         <div className="auth-form-card-wrapper">
           <div className="auth-card-header">
             <span className="card-badge">
-              <Sparkles size={13} />
+              <Sparkles size={12} />
               <span>Driver Portal</span>
             </span>
             <h2>{isRegister ? 'Create driver account' : 'Welcome back, driver'}</h2>
@@ -130,7 +127,7 @@ export default function AuthPage() {
           <div className="demo-driver-callout">
             <div className="demo-callout-header">
               <div className="demo-icon-wrap">
-                <Truck size={17} />
+                <Truck size={15} />
               </div>
               <div>
                 <b>Instant Demo Access</b>
@@ -143,12 +140,12 @@ export default function AuthPage() {
               onClick={handleDemoLogin}
             >
               <span>Continue as Demo Driver (Alex Morgan)</span>
-              <ArrowRight size={16} />
+              <ArrowRight size={15} />
             </button>
           </div>
 
           <div className="auth-separator">
-            <span>or sign in with credentials</span>
+            <span>or sign in with email</span>
           </div>
 
           {/* Regular Login Form */}
@@ -157,7 +154,7 @@ export default function AuthPage() {
               <div className="field-block">
                 <label htmlFor="driverName">Full Name</label>
                 <div className="field-input-wrap">
-                  <User size={16} className="field-icon" />
+                  <User size={15} className="field-icon" />
                   <input
                     id="driverName"
                     type="text"
@@ -173,7 +170,7 @@ export default function AuthPage() {
             <div className="field-block">
               <label htmlFor="email">Email Address</label>
               <div className="field-input-wrap">
-                <Mail size={16} className="field-icon" />
+                <Mail size={15} className="field-icon" />
                 <input
                   id="email"
                   type="email"
@@ -190,7 +187,7 @@ export default function AuthPage() {
                 <label htmlFor="password">Password</label>
               </div>
               <div className="field-input-wrap">
-                <Lock size={16} className="field-icon" />
+                <Lock size={15} className="field-icon" />
                 <input
                   id="password"
                   type="password"
@@ -204,7 +201,7 @@ export default function AuthPage() {
 
             <button type="submit" className="btn-auth-submit">
               <span>{isRegister ? 'Create Driver Account' : 'Sign In to Portal'}</span>
-              <ArrowRight size={16} />
+              <ArrowRight size={15} />
             </button>
           </form>
 
@@ -227,7 +224,7 @@ export default function AuthPage() {
           </div>
 
           <div className="auth-guarantee-note">
-            <ShieldCheck size={15} />
+            <ShieldCheck size={14} />
             <span>Compliant calculations matching official USDOT/FMCSA rulebooks</span>
           </div>
         </div>

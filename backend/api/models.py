@@ -70,6 +70,7 @@ class DailyLog(models.Model):
     total_sleeper_hours = models.FloatField(default=0.0)
     is_fmcsa_compliant = models.BooleanField(default=True)
     
+    log_data_json = models.JSONField(default=dict)
     grid_intervals_json = models.JSONField(default=list)
     remarks_json = models.JSONField(default=list)
     recap_json = models.JSONField(default=dict)
@@ -81,13 +82,27 @@ class DailyLog(models.Model):
         return f"Log Day {self.day_number} - {self.log_date} ({self.driver_name})"
 
     def to_dict(self):
+        if self.log_data_json:
+            data = dict(self.log_data_json)
+            data["id"] = str(self.id)
+            data["day_number"] = self.day_number
+            data["date"] = data.get("date") or self.log_date
+            return data
         return {
             "id": str(self.id),
             "day_number": self.day_number,
             "date": self.log_date,
             "driver_name": self.driver_name,
             "carrier_name": self.carrier_name,
+            "truck_number": self.truck_id,
             "truck_id": self.truck_id,
+            "totals_hours": {
+                "off_duty": self.total_off_duty_hours,
+                "sleeper_berth": self.total_sleeper_hours,
+                "driving": self.total_driving_hours,
+                "on_duty_not_driving": self.total_on_duty_hours,
+                "total": 24.0
+            },
             "totals": {
                 "OFF_DUTY": self.total_off_duty_hours,
                 "SLEEPER_BERTH": self.total_sleeper_hours,
@@ -96,7 +111,7 @@ class DailyLog(models.Model):
                 "total_on_duty": round(self.total_driving_hours + self.total_on_duty_hours, 2),
                 "is_compliant": self.is_fmcsa_compliant
             },
-            "duty_intervals": self.grid_intervals_json,
+            "segments": self.grid_intervals_json,
             "duty_segments": self.grid_intervals_json,
             "remarks": self.remarks_json,
             "recap": self.recap_json
