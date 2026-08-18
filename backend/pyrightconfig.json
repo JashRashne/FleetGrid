@@ -1,0 +1,12 @@
+{
+  "venvPath": ".",
+  "venv": "venv",
+  "extraPaths": [
+    ".",
+    "./api",
+    "./venv/lib/python3.14/site-packages"
+  ],
+  "include": [
+    "."
+  ]
+}
