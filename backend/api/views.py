@@ -154,7 +154,10 @@ class PlanTripView(APIView):
         daily_logs = generate_daily_log_sheets(
             events=events,
             start_time_iso=start_time_iso,
-            initial_cycle_used_minutes=initial_cycle_used_minutes
+            initial_cycle_used_minutes=initial_cycle_used_minutes,
+            origin_name=curr_name,
+            pickup_name=pick_name,
+            destination_name=drop_name,
         )
 
         # 6. Calculate comprehensive KPI summary

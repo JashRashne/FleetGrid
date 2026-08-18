@@ -18,7 +18,10 @@ def generate_daily_log_sheets(
     carrier_name: str = "Apex Freight Lines",
     driver_name: str = "Alex Mercer (Demo Driver)",
     truck_number: str = "TRK-8821",
-    trailer_number: str = "TLR-4019"
+    trailer_number: str = "TLR-4019",
+    origin_name: str = "",
+    pickup_name: str = "",
+    destination_name: str = "",
 ) -> List[Dict[str, Any]]:
     """
     Slices the continuous event stream at midnight boundaries into 24-hour log sheet datasets.
@@ -128,7 +131,12 @@ def generate_daily_log_sheets(
                 "start_minute": clipped_s,
                 "end_minute": clipped_e,
                 "duration_minutes": clipped_dur,
-                "duration_hours": round(clipped_dur / 60.0, 2)
+                "duration_hours": round(clipped_dur / 60.0, 2),
+                "miles_driven": round(
+                    seg.get("miles_driven", 0.0) * (clipped_dur / (seg_e - seg_s))
+                    if seg_e > seg_s else 0.0,
+                    2
+                )
             })
 
             # Add remark at start of duty status change if it occurs on this day
@@ -175,8 +183,14 @@ def generate_daily_log_sheets(
 
         # On-duty today = driving + on-duty not driving
         on_duty_today_mins = totals["driving_minutes"] + totals["on_duty_not_driving_minutes"]
+        cycle_at_start_mins = cumulative_cycle_mins
         cumulative_cycle_mins += on_duty_today_mins
         avail_tomorrow_mins = max(0, (70 * 60) - cumulative_cycle_mins)
+
+        route_stops = [name for name in (origin_name, pickup_name, destination_name) if name]
+        trip_route = " -> ".join(dict.fromkeys(route_stops))
+        first_location = origin_name or (day_remarks[0]["location"] if day_remarks else "")
+        last_location = destination_name or (day_remarks[-1]["location"] if day_remarks else first_location)
 
         daily_logs.append({
             "day_number": day_num,
@@ -187,6 +201,10 @@ def generate_daily_log_sheets(
             "driver_name": driver_name,
             "truck_number": truck_number,
             "trailer_number": trailer_number,
+            "from_location": first_location,
+            "to_location": last_location,
+            "pickup_location": pickup_name,
+            "trip_route": trip_route,
             "total_miles_driving_today": round(day_miles_driven, 1),
             "segments": day_segments,
             "totals_hours": {
@@ -199,7 +217,7 @@ def generate_daily_log_sheets(
             "remarks": day_remarks,
             "recap": {
                 "on_duty_today_hours": round(on_duty_today_mins / 60.0, 2),
-                "cycle_hours_at_start": round(initial_cycle_used_minutes / 60.0, 2),
+                "cycle_hours_at_start": round(cycle_at_start_mins / 60.0, 2),
                 "cycle_hours_cumulative": round(cumulative_cycle_mins / 60.0, 2),
                 "cycle_hours_remaining": round(avail_tomorrow_mins / 60.0, 2)
             }

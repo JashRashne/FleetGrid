@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Truck, LayoutDashboard, PlusCircle, FileText, 
-  LogOut, ShieldCheck, User, Sparkles, Route
+  LogOut, ShieldCheck, User, Sparkles, Route, Menu, X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -10,6 +10,7 @@ export default function AppNavbar() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -32,7 +33,7 @@ export default function AppNavbar() {
           <span className="brand-badge">ELD</span>
         </Link>
 
-        <nav className="navbar-links">
+        <nav className={`navbar-links ${isMobileMenuOpen ? 'is-open' : ''}`} aria-label="Driver portal navigation">
           {navLinks.map((link) => {
             const Icon = link.icon;
             const isActive = location.pathname === link.to;
@@ -41,6 +42,7 @@ export default function AppNavbar() {
                 key={link.to}
                 to={link.to}
                 className={`navbar-link ${isActive ? 'active' : ''}`}
+                onClick={() => setIsMobileMenuOpen(false)}
               >
                 <Icon size={16} />
                 <span>{link.label}</span>
@@ -82,6 +84,16 @@ export default function AppNavbar() {
             </Link>
           )}
         </div>
+
+        <button
+          className="navbar-mobile-toggle"
+          type="button"
+          aria-label={isMobileMenuOpen ? 'Close navigation' : 'Open navigation'}
+          aria-expanded={isMobileMenuOpen}
+          onClick={() => setIsMobileMenuOpen((open) => !open)}
+        >
+          {isMobileMenuOpen ? <X size={19} /> : <Menu size={20} />}
+        </button>
       </div>
     </header>
   );

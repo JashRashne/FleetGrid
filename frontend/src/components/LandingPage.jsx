@@ -1,203 +1,108 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import truckHeroClay from '../assets/truck-hero-clay.png';
-import featureRouteClay from '../assets/feature-route-clay.png';
-import featureHoursClay from '../assets/feature-hours-clay.png';
-import featureLogsClay from '../assets/feature-logs-clay.png';
-import workflowStopsClay from '../assets/workflow-stops-clay.png';
-import workflowPlanClay from '../assets/workflow-plan-clay.png';
-import workflowDriveClay from '../assets/workflow-drive-clay.png';
-import {
-  ArrowRight, Check, ChevronRight, Clock3, FileCheck2, MapPinned,
-  Menu, Play, Route, ShieldCheck, Sparkles, Truck, X, User
-} from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowRight, Check, Menu, Route, ShieldCheck, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-const features = [
-  {
-    icon: <Route size={22} />,
-    title: 'Routes that respect real life',
-    text: 'Build efficient trips around fuel, pickup windows, and compliant breaks.',
-    art: featureRouteClay
-  },
-  {
-    icon: <Clock3 size={22} />,
-    title: 'Hours, made crystal clear',
-    text: 'See driving windows, reset time, and every mandatory pause in one view.',
-    art: featureHoursClay
-  },
-  {
-    icon: <FileCheck2 size={22} />,
-    title: 'Logs ready when you are',
-    text: 'Turn a planned route into clear daily log sheets in just a few clicks.',
-    art: featureLogsClay
-  }
+const benefits = [
+  ['01', 'Route planning', 'Build a trip around the stops that actually matter.'],
+  ['02', 'Hours of service', 'Keep driving, break, and reset windows in view.'],
+  ['03', 'Daily logs', 'Review and export a clear record for every day.']
 ];
-
-const workflowSteps = [
-  {
-    number: '01',
-    label: 'Add your stops',
-    kicker: 'Step 01 · Set the route',
-    title: <>Your route,<br /><em>all in one place.</em></>,
-    text: 'Add where you are, where the load begins, and where it needs to go. We turn those details into a route that is ready to plan.',
-    detail: 'Start, pickup, and delivery',
-    art: workflowStopsClay,
-    alt: 'Clay route map with pickup and delivery pins'
-  },
-  {
-    number: '02',
-    label: 'Get a compliant plan',
-    kicker: 'Step 02 · Protect your hours',
-    title: <>A schedule that<br /><em>works with your clock.</em></>,
-    text: 'MileMint lays out your driving windows, planned breaks, fuel stops, and resets so every mile fits within your available hours.',
-    detail: 'Driving, breaks, fuel, and reset time',
-    art: workflowPlanClay,
-    alt: 'Clay compliance schedule with clock, fuel stop, and shield'
-  },
-  {
-    number: '03',
-    label: 'Hit the road',
-    kicker: 'Step 03 · Drive with confidence',
-    title: <>See the plan.<br /><em>Enjoy the drive.</em></>,
-    text: 'Follow one clear trip view while your daily log is ready in the background. Less second-guessing, more road ahead.',
-    detail: 'A route and log you can trust',
-    art: workflowDriveClay,
-    alt: 'Clay delivery truck driving toward a destination'
-  }
-];
-
-function ClayTruck({ className = '' }) {
-  return (
-    <div className={`hero-truck ${className}`} aria-label="Animated delivery truck">
-      <span className="truck-shine" />
-      <div className="truck-trailer"><span className="trailer-mark">M</span></div>
-      <div className="truck-cab">
-        <span className="cab-window" />
-        <span className="headlight" />
-      </div>
-      <span className="truck-wheel wheel-one" /><span className="truck-wheel wheel-two" />
-    </div>
-  );
-}
 
 export default function LandingPage() {
-  const [activeWorkflowStep, setActiveWorkflowStep] = useState(0);
-  const currentWorkflowStep = workflowSteps[activeWorkflowStep];
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const handleGetStarted = () => {
-    if (isAuthenticated) {
-      navigate('/dashboard');
-    } else {
-      navigate('/login', { state: { from: { pathname: '/plan' } } });
-    }
-  };
-
-  const handleOpenLogin = () => {
-    navigate('/login');
+  const startPlanning = () => {
+    if (isAuthenticated) navigate('/dashboard');
+    else navigate('/login', { state: { from: { pathname: '/plan' } } });
   };
 
   return (
-    <div className="landing-page">
-      <nav className="landing-nav" aria-label="Main navigation">
-        <Link to="/" className="landing-logo" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-          <span className="logo-mark"><Truck size={20} /></span>
-          <span>mile<span>mint</span></span>
-        </Link>
-        <div className="landing-links">
-          <a href="#why">Why MileMint</a>
-          <a href="#how-it-works">How it works</a>
-          <a href="#built-for">Built for drivers</a>
-        </div>
-        <div className="nav-actions">
-          {isAuthenticated ? (
-            <Link to="/dashboard" className="nav-login">
-              <User size={15} /> Dashboard ({user?.name?.split(' ')[0]})
-            </Link>
-          ) : (
-            <button className="nav-login" onClick={handleOpenLogin}>Driver Sign In</button>
-          )}
-          <button className="nav-cta" onClick={handleGetStarted}>Plan a trip <ArrowRight size={16} /></button>
-        </div>
-        <button className="mobile-menu" aria-label="Open menu"><Menu size={21} /></button>
-      </nav>
+    <div className="minimal-landing">
+      <div className="minimal-frame">
+        <header className="minimal-header">
+          <Link to="/" className="minimal-brand" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+            <span className="minimal-brand-mark">m</span>
+            <span>milemint</span>
+          </Link>
 
-      <main>
-        <section className="hero-section">
-          <div className="hero-copy">
-            <div className="eyebrow"><Sparkles size={15} /> Your calm co-pilot for every mile</div>
-            <h1>Good trips<br />start <em>here.</em></h1>
-            <p className="hero-description">Plan compliant routes, protect your hours, and keep your wheels moving with an ELD planner that feels refreshingly simple.</p>
-            <div className="hero-actions">
-              <button className="hero-primary" onClick={handleGetStarted}>Start planning <ArrowRight size={18} /></button>
-              <button className="hero-watch" onClick={() => document.querySelector('#how-it-works')?.scrollIntoView({ behavior: 'smooth' })}><span><Play size={14} fill="currentColor" /></span> See how it works</button>
-            </div>
-            <div className="hero-proof"><span className="proof-check"><Check size={15} /></span> Built around FMCSA property-carrying rules</div>
-          </div>
+          <nav className={`minimal-nav ${menuOpen ? 'is-open' : ''}`} aria-label="Main navigation">
+            <a href="#product" onClick={() => setMenuOpen(false)}>Product</a>
+            <a href="#how-it-works" onClick={() => setMenuOpen(false)}>How it works</a>
+            <a href="#compliance" onClick={() => setMenuOpen(false)}>Compliance</a>
+            {isAuthenticated ? <Link to="/dashboard" onClick={() => setMenuOpen(false)}>Dashboard</Link> : <Link to="/login" onClick={() => setMenuOpen(false)}>Sign in</Link>}
+          </nav>
 
-          <div className="hero-art" aria-hidden="true">
-            <div className="sun-orb" />
-            <div className="cloud cloud-one" /><div className="cloud cloud-two" />
-            <img className="generated-hero-truck" src={truckHeroClay} alt="" />
-            <div className="location-card pickup-card"><span className="card-pin pin-green" /><div><small>Pickup</small><b>Chicago, IL</b></div><span className="card-time">08:30</span></div>
-            <div className="location-card drop-card"><span className="card-pin pin-orange" /><div><small>Delivery</small><b>Atlanta, GA</b></div><span className="card-time">Tomorrow</span></div>
-            <div className="map-route"><span className="route-dot route-start" /><span className="route-dot route-end" /><span className="route-pulse" /></div>
-            <div className="hill hill-back" /><div className="hill hill-front" />
-            <div className="road"><span className="road-line line-a" /><span className="road-line line-b" /><span className="road-line line-c" /></div>
-            <ClayTruck />
-            <ClayTruck className="hero-truck-small" />
-            <div className="hours-bubble"><span className="bubble-icon"><Clock3 size={19} /></span><div><small>Drive time left</small><strong>8h 42m</strong></div><i>Safe</i></div>
-          </div>
-        </section>
+          <button className="minimal-header-cta" onClick={startPlanning}>
+            {isAuthenticated ? `Open ${user?.name ? 'dashboard' : 'portal'}` : 'Plan a trip'} <ArrowRight size={17} />
+          </button>
+          <button className="minimal-menu-toggle" aria-label="Toggle navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen((value) => !value)}>
+            {menuOpen ? <X size={21} /> : <Menu size={21} />}
+          </button>
+        </header>
 
-        <section className="trust-strip" aria-label="Product benefits">
-          <div><ShieldCheck size={21} /><span><b>Compliant by design</b><small>FMCSA-ready planning</small></span></div>
-          <div><MapPinned size={21} /><span><b>Smarter route timing</b><small>Stops where they matter</small></span></div>
-          <div><FileCheck2 size={21} /><span><b>Cleaner daily logs</b><small>Export-ready schedules</small></span></div>
-        </section>
-
-        <section className="features-section" id="why">
-          <div className="section-intro"><span className="section-kicker">Less stress. More road.</span><h2>Everything you need,<br />without the <em>noise.</em></h2></div>
-          <div className="feature-grid">
-            {features.map((feature, index) => <article className={`feature-card feature-${index + 1}`} key={feature.title}>
-              <span className="feature-icon">{feature.icon}</span><h3>{feature.title}</h3><p>{feature.text}</p><button onClick={handleGetStarted}>Explore <ChevronRight size={16} /></button>
-              <img className="feature-art" src={feature.art} alt="" />
-            </article>)}
-          </div>
-        </section>
-
-        <section className="workflow-section" id="how-it-works">
-          <div className="workflow-topline"><span className="section-kicker">A smoother trip, in minutes</span><span className="workflow-hint">Choose a step to explore</span></div>
-          <div className="workflow-layout">
-            <div className="workflow-visual">
-              <div className="workflow-glow" />
-              <img key={currentWorkflowStep.number} className="workflow-art" src={currentWorkflowStep.art} alt={currentWorkflowStep.alt} />
-              <div className="workflow-status"><span><Check size={14} /></span>{currentWorkflowStep.detail}</div>
-            </div>
-            <div className="workflow-content">
-              <div className="workflow-steps" role="tablist" aria-label="How it works steps">
-                {workflowSteps.map((step, index) => <button key={step.number} className={`workflow-step ${activeWorkflowStep === index ? 'active' : ''}`} role="tab" aria-selected={activeWorkflowStep === index} onClick={() => setActiveWorkflowStep(index)}>
-                  <span>{step.number}</span><b>{step.label}</b><ChevronRight size={16} />
-                </button>)}
-              </div>
-              <div className="workflow-copy" role="tabpanel">
-                <span className="workflow-step-kicker">{currentWorkflowStep.kicker}</span>
-                <h2>{currentWorkflowStep.title}</h2>
-                <p>{currentWorkflowStep.text}</p>
-                <div className="workflow-footer">
-                  <div className="workflow-progress" aria-label={`Step ${activeWorkflowStep + 1} of 3`}><span style={{ width: `${((activeWorkflowStep + 1) / workflowSteps.length) * 100}%` }} /></div>
-                  {activeWorkflowStep < workflowSteps.length - 1 ? <button className="workflow-next" onClick={() => setActiveWorkflowStep(activeWorkflowStep + 1)}>Next step <ArrowRight size={16} /></button> : <button className="text-link" onClick={handleGetStarted}>Build your first route <ArrowRight size={17} /></button>}
-                </div>
+        <main>
+          <section className="minimal-hero" id="product">
+            <div className="minimal-hero-copy">
+              <p className="minimal-eyebrow">ELD TRIP PLANNING / MADE FOR DRIVERS</p>
+              <h1>Plan the road.<br /><span>Keep the day clear.</span></h1>
+              <p className="minimal-description">
+                MileMint brings trip planning, hours-of-service checks, and daily logs into one calm workspace—so the next move is always obvious.
+              </p>
+              <div className="minimal-actions">
+                <button className="minimal-primary" onClick={startPlanning}>Build a trip <ArrowRight size={18} /></button>
+                <a className="minimal-text-link" href="#how-it-works">See how it works</a>
               </div>
             </div>
-          </div>
-        </section>
 
-        <section className="closing-section" id="built-for"><div><span className="section-kicker">Made for the long haul</span><h2>Your next good<br />trip is waiting.</h2><p>Take the guesswork out of your next route.</p></div><button className="hero-primary" onClick={handleGetStarted}>Open trip planner <ArrowRight size={18} /></button></section>
-      </main>
-      <footer className="landing-footer"><span className="landing-logo"><span className="logo-mark"><Truck size={17} /></span> mile<span>mint</span></span><small>© 2026 MileMint. Designed for the road ahead.</small><div><a href="#why">Features</a><a href="#how-it-works">How it works</a><button onClick={handleGetStarted}>Planner</button></div></footer>
+            <aside className="trip-brief" aria-label="Example trip summary">
+              <div className="trip-brief-topline"><span>TRIP BRIEF</span><span>08 / 18 / 26</span></div>
+              <div className="trip-brief-route">
+                <div><i className="brief-pin start" /><span>Current location</span><b>Chicago, IL</b></div>
+                <span className="brief-line" />
+                <div><i className="brief-pin stop" /><span>Pickup</span><b>Indianapolis, IN</b></div>
+                <span className="brief-line" />
+                <div><i className="brief-pin end" /><span>Delivery</span><b>Atlanta, GA</b></div>
+              </div>
+              <div className="trip-brief-stats">
+                <div><span>Distance</span><b>712 mi</b></div>
+                <div><span>Drive window</span><b>13h 18m</b></div>
+                <div><span>HOS status</span><b className="brief-ready"><Check size={14} /> Ready</b></div>
+              </div>
+              <div className="trip-brief-footer"><Route size={16} /> A practical plan, before you leave the yard.</div>
+            </aside>
+          </section>
+
+          <section className="minimal-benefits" id="how-it-works">
+            {benefits.map(([number, title, text]) => (
+              <article key={number}>
+                <span>{number}</span>
+                <h2>{title}</h2>
+                <p>{text}</p>
+              </article>
+            ))}
+          </section>
+
+          <section className="minimal-compliance" id="compliance">
+            <div>
+              <p className="minimal-eyebrow">BUILT FOR THE REAL WORKDAY</p>
+              <h2>Less paperwork.<br />More certainty.</h2>
+            </div>
+            <div className="compliance-copy">
+              <p>MileMint accounts for the FMCSA property-carrying rules that shape a driver’s day: driving limits, duty windows, mandatory breaks, and 70-hour cycles.</p>
+              <div><ShieldCheck size={18} /><span>Clear planning support for 49 CFR Part 395</span></div>
+            </div>
+          </section>
+        </main>
+
+        <footer className="minimal-footer">
+          <span>© 2026 MileMint</span>
+          <span>Built for the road ahead.</span>
+          <button onClick={startPlanning}>Start planning <ArrowRight size={15} /></button>
+        </footer>
+      </div>
     </div>
   );
 }

@@ -4,7 +4,6 @@ import {
   AlertCircle, ArrowLeft, CalendarDays, CheckCircle2, Clock3, FileText,
   LayoutDashboard, ListChecks, Map, MapPinned, Navigation, Route, ShieldCheck, Sparkles, Truck, PlusCircle, Loader2
 } from 'lucide-react';
-import plannerOnboardingClay from '../assets/planner-onboarding-clay.png';
 import TripInputForm from './TripInputForm';
 import TripSummary from './TripSummary';
 import RouteMap from './RouteMap';
@@ -144,11 +143,10 @@ export default function PlannerExperience() {
                   <span><CheckCircle2 size={17} /> Create daily logs</span>
                 </div>
               </div>
-              <img 
-                src={plannerOnboardingClay} 
-                className="planner-onboarding-art" 
-                alt="Clay truck, route map, and driver logbook" 
-              />
+              <div className="planner-route-mark" aria-hidden="true">
+                <span>Chicago</span><i /><span>Indianapolis</span><i /><span>Atlanta</span>
+                <b>712 mi</b>
+              </div>
             </section>
 
             <section className="planner-form-wrap">

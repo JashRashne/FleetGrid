@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import DailyLogSheet from './DailyLogSheet';
-import { FileText, Printer, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { FileText, Printer, Calendar } from 'lucide-react';
 
 export default function LogSheetViewer({ dailyLogs }) {
   const [activeDayIdx, setActiveDayIdx] = useState(0);
@@ -14,11 +14,11 @@ export default function LogSheetViewer({ dailyLogs }) {
   };
 
   return (
-    <div className="clay-card log-viewer-card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <FileText size={20} color="#2563eb" />
-          <h3 style={{ fontSize: '18px', fontWeight: 700 }}>
+    <div className="log-viewer-card log-sheet-viewer">
+      <div className="log-sheet-viewer-header">
+        <div className="log-sheet-viewer-title">
+          <FileText size={20} />
+          <h3>
             FMCSA Driver's Daily Log Sheets ({dailyLogs.length} Day{dailyLogs.length > 1 ? 's' : ''})
           </h3>
         </div>
@@ -26,8 +26,7 @@ export default function LogSheetViewer({ dailyLogs }) {
         <button
           type="button"
           onClick={handlePrint}
-          className="clay-btn"
-          style={{ padding: '8px 16px', fontSize: '13px' }}
+          className="log-sheet-print-button"
         >
           <Printer size={16} />
           Print / PDF Export
@@ -44,7 +43,7 @@ export default function LogSheetViewer({ dailyLogs }) {
               className={`day-tab-btn ${activeDayIdx === idx ? 'active' : ''}`}
               onClick={() => setActiveDayIdx(idx)}
             >
-              <Calendar size={14} style={{ display: 'inline', marginRight: '6px' }} />
+              <Calendar size={14} />
               Day {log.day_number} ({log.date})
             </button>
           ))}
