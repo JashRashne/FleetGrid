@@ -411,28 +411,7 @@ body {
   border: 1px solid rgba(203, 213, 225, 0.4);
 }
 
-/* Print Styles */
-@media print {
-  body {
-    background: #ffffff !important;
-  }
-  .app-header, .form-card, .map-card, .timeline-card, .day-tab-btn, .clay-btn, .kpi-grid {
-    display: none !important;
-  }
-  .main-grid {
-    display: block !important;
-  }
-  .log-viewer-card {
-    box-shadow: none !important;
-    border: none !important;
-    padding: 0 !important;
-  }
-  .svg-log-wrapper {
-    box-shadow: none !important;
-    border: none !important;
-    padding: 0 !important;
-  }
-}
+
 
 /* Landing page */
 .landing-page {
@@ -2163,17 +2142,37 @@ body {
   margin: 0 0 16px;
 }
 
-/* Print Stylesheet for FMCSA DOT Inspections */
+/* ==========================================================================
+   STRICT 1-PAGE FMCSA PRINT STYLESHEET (Landscape PDF)
+   ========================================================================== */
 @media print {
-  body {
-    background: #ffffff !important;
-    color: #000000 !important;
+  @page {
+    size: letter landscape;
+    margin: 6mm 8mm;
   }
 
+  *, *::before, *::after {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide all app chrome, sidebars, buttons, and headers */
   .app-navbar,
   .logs-hero-banner,
   .logs-selector-sidebar,
-  .sheet-top-controls button,
+  .sheet-top-controls,
   .planner-results-topbar,
   .planner-tabs,
   .landing-nav,
@@ -2181,28 +2180,67 @@ body {
   .logout-btn,
   .btn-print-log,
   .btn-print-compact,
-  .btn-plan-primary {
+  .btn-plan-primary,
+  .btn-plan-from-logs,
+  .form-card,
+  .map-card,
+  .timeline-card,
+  .day-tab-btn,
+  .clay-btn,
+  .kpi-grid,
+  .empty-logs-state,
+  .route-summary-panel,
+  .log-day-tabs {
     display: none !important;
   }
 
-  .logs-content-layout {
+  .logs-hub-page,
+  .logs-hub-main,
+  .logs-content-layout,
+  .active-log-sheet-container,
+  .printable-log-sheet-area,
+  .log-viewer-card,
+  .main-grid {
     display: block !important;
-  }
-
-  .active-log-sheet-container {
-    box-shadow: none !important;
-    border: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
     padding: 0 !important;
+    border: none !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
   }
 
   .svg-log-wrapper {
-    page-break-inside: avoid;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    border: none !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
   }
 
-  @page {
-    size: landscape;
-    margin: 10mm;
+  .svg-log-wrapper svg {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: 94vh !important;
+    margin: 0 auto !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
   }
 }
 

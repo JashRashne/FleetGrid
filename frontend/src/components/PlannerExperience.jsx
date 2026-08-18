@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   AlertCircle, ArrowLeft, CalendarDays, CheckCircle2, Clock3, FileText,
-  LayoutDashboard, ListChecks, Map, MapPinned, Navigation, Route, ShieldCheck, Sparkles, Truck, PlusCircle
+  LayoutDashboard, ListChecks, Map, MapPinned, Navigation, Route, ShieldCheck, Sparkles, Truck, PlusCircle, Loader2
 } from 'lucide-react';
 import plannerOnboardingClay from '../assets/planner-onboarding-clay.png';
 import TripInputForm from './TripInputForm';
@@ -26,7 +26,7 @@ export default function PlannerExperience() {
   const { tripId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { saveTrip, isAuthenticated } = useAuth();
+  const { saveTrip, setActiveTrip } = useAuth();
 
   const [tripData, setTripData] = useState(() => {
     return location.state?.loadTrip || null;
@@ -39,18 +39,33 @@ export default function PlannerExperience() {
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
-    if (location.state?.loadTrip) {
+    if (tripId) {
+      const stateTrip = location.state?.loadTrip;
+      if (stateTrip && stateTrip.events && stateTrip.events.length > 0 && stateTrip.daily_logs && stateTrip.daily_logs.length > 0) {
+        setTripData(stateTrip);
+        setActiveTrip(stateTrip);
+        setActiveTab('overview');
+      } else {
+        setIsLoading(true);
+        fetchTripById(tripId).then(data => {
+          if (data) {
+            setTripData(data);
+            setActiveTrip(data);
+            setActiveTab('overview');
+          }
+        }).catch(err => {
+          console.error("Failed to load trip by id:", err);
+        }).finally(() => {
+          setIsLoading(false);
+        });
+      }
+    } else if (location.state?.loadTrip) {
       setTripData(location.state.loadTrip);
       setActiveTab('overview');
-    } else if (tripId) {
-      setIsLoading(true);
-      fetchTripById(tripId).then(data => {
-        if (data) {
-          setTripData(data);
-          setActiveTab('overview');
-        }
-      }).finally(() => setIsLoading(false));
+    } else {
+      setTripData(null);
     }
+
     if (location.state?.prefill) {
       setPrefill(location.state.prefill);
     }
@@ -63,8 +78,10 @@ export default function PlannerExperience() {
       const result = await planTrip(formData);
       setTripData(result);
       setActiveTab('overview');
-      // Automatically save trip to driver's dashboard history
       saveTrip(result);
+      if (result?.id) {
+        navigate(`/trip/${result.id}`, { replace: true, state: { loadTrip: result } });
+      }
     } catch (err) {
       setError(err.message || 'We could not build this trip. Please double-check each location and try again.');
     } finally {
@@ -76,14 +93,40 @@ export default function PlannerExperience() {
     setTripData(null);
     setPrefill(null);
     setError(null);
+    navigate('/plan');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  const getArraySafe = (val) => {
+    if (Array.isArray(val)) return val;
+    if (!val) return [];
+    if (typeof val === 'object') return Object.values(val);
+    return [String(val)];
+  };
+
+  const normalizedTrip = tripData ? {
+    ...tripData,
+    summary: tripData.summary || tripData.summary_json || {},
+    locations: tripData.locations || tripData.locations_json || {},
+    route_geometry: tripData.route_geometry || tripData.route_geometry_json,
+    turn_by_turn_steps: getArraySafe(tripData.turn_by_turn_steps || tripData.turn_by_turn_steps_json),
+    events: getArraySafe(tripData.events || tripData.events_json),
+    daily_logs: getArraySafe(tripData.daily_logs),
+    disclaimers: getArraySafe(tripData.disclaimers || tripData.disclaimers_json)
+  } : null;
 
   return (
     <div className="planner-page-wrapper">
       <AppNavbar />
 
-      {!tripData ? (
+      {isLoading && !normalizedTrip && (
+        <div className="planner-loading-overlay">
+          <Loader2 size={36} className="spinner" />
+          <p>Loading your saved route and logbooks...</p>
+        </div>
+      )}
+
+      {!normalizedTrip ? (
         <div className="planner-page">
           <main className="planner-onboarding">
             <section className="planner-welcome">
@@ -162,8 +205,8 @@ export default function PlannerExperience() {
                 <span className="plan-ready-mark"><CheckCircle2 size={21} /></span>
                 <div>
                   <span>Your trip is ready</span>
-                  <h1>{tripData.locations?.current?.name} <Route size={22} /> {tripData.locations?.dropoff?.name}</h1>
-                  <p>Pickup at {tripData.locations?.pickup?.name}. Your plan accounts for the required driving, service, fuel, and rest time.</p>
+                  <h1>{normalizedTrip.locations?.current?.name} <Route size={22} /> {normalizedTrip.locations?.dropoff?.name}</h1>
+                  <p>Pickup at {normalizedTrip.locations?.pickup?.name}. Your plan accounts for the required driving, service, fuel, and rest time.</p>
                 </div>
               </div>
               <button onClick={() => setActiveTab('logs')}>
@@ -171,7 +214,7 @@ export default function PlannerExperience() {
               </button>
             </section>
 
-            <TripSummary summary={tripData.summary} />
+            <TripSummary summary={normalizedTrip.summary} />
 
             <div className="planner-tabs" role="tablist" aria-label="Trip plan views">
               {RESULT_TABS.map((tab) => {
@@ -194,17 +237,17 @@ export default function PlannerExperience() {
               {activeTab === 'overview' && (
                 <div className="planner-overview">
                   <RouteMap 
-                    locations={tripData.locations} 
-                    routeGeometry={tripData.route_geometry} 
-                    events={tripData.events} 
+                    locations={normalizedTrip.locations} 
+                    routeGeometry={normalizedTrip.route_geometry} 
+                    events={normalizedTrip.events} 
                   />
                   <aside className="plan-next-card">
                     <span className="next-card-icon"><Clock3 size={19} /></span>
                     <span className="next-card-label">First planned activity</span>
-                    <h2>{((tripData.events || []).find((event) => event.duty_status !== 'OFF_DUTY') || tripData.events?.[0])?.remark || 'Route begins'}</h2>
+                    <h2>{((normalizedTrip.events || []).find((event) => event.duty_status !== 'OFF_DUTY') || normalizedTrip.events?.[0])?.remark || 'Route begins'}</h2>
                     <p>
-                      {((tripData.events || []).find((event) => event.duty_status !== 'OFF_DUTY') || tripData.events?.[0]) 
-                        ? `${((tripData.events || []).find((event) => event.duty_status !== 'OFF_DUTY') || tripData.events?.[0]).duration_minutes} minutes · ${((tripData.events || []).find((event) => event.duty_status !== 'OFF_DUTY') || tripData.events?.[0]).location_name}`
+                      {((normalizedTrip.events || []).find((event) => event.duty_status !== 'OFF_DUTY') || normalizedTrip.events?.[0]) 
+                        ? `${((normalizedTrip.events || []).find((event) => event.duty_status !== 'OFF_DUTY') || normalizedTrip.events?.[0]).duration_minutes} minutes · ${((normalizedTrip.events || []).find((event) => event.duty_status !== 'OFF_DUTY') || normalizedTrip.events?.[0]).location_name}`
                         : 'Your route details will appear here.'}
                     </p>
                     <div className="plan-check-list">
@@ -223,7 +266,7 @@ export default function PlannerExperience() {
                     <h2>Here’s what happens, in order.</h2>
                     <p>Each card shows where you’ll be, how long the activity takes, and whether it counts as driving or on-duty time.</p>
                   </div>
-                  <EventTimeline events={tripData.events} />
+                  <EventTimeline events={normalizedTrip.events} />
                 </div>
               )}
 
@@ -234,7 +277,7 @@ export default function PlannerExperience() {
                     <h2>Your daily ELD log sheets.</h2>
                     <p>Select any day below. Each sheet covers a complete 24-hour grid and is filled from your planned schedule.</p>
                   </div>
-                  <LogSheetViewer dailyLogs={tripData.daily_logs} />
+                  <LogSheetViewer dailyLogs={normalizedTrip.daily_logs} />
                 </div>
               )}
 
@@ -245,15 +288,18 @@ export default function PlannerExperience() {
                     <h2>Simple directions for your route.</h2>
                     <p>Review the route one segment at a time before you head out.</p>
                   </div>
-                  <RouteDirections steps={tripData.turn_by_turn_steps} />
+                  <RouteDirections steps={normalizedTrip.turn_by_turn_steps} />
                 </div>
               )}
             </section>
 
-            <aside className="planner-disclaimer">
-              <AlertCircle size={16} />
-              <span>{tripData.disclaimers?.routing || 'Calculated in accordance with FMCSA 49 CFR Part 395 rules.'}</span>
-            </aside>
+            {normalizedTrip.disclaimers && normalizedTrip.disclaimers.length > 0 && (
+              <footer className="planner-disclaimers">
+                {normalizedTrip.disclaimers.map((note, index) => (
+                  <p key={index}>{typeof note === 'string' ? note : JSON.stringify(note)}</p>
+                ))}
+              </footer>
+            )}
           </main>
         </div>
       )}

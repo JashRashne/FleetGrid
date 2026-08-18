@@ -293,16 +293,14 @@ class TripListCreateView(APIView):
     """List all saved trips or create a new trip record."""
     def get(self, request):
         trips = Trip.objects.all().order_by('-created_at')
-        serializer = TripListSerializer(trips, many=True)
-        return Response({"trips": serializer.data}, status=status.HTTP_200_OK)
+        return Response({"trips": [trip.to_frontend_dict() for trip in trips]}, status=status.HTTP_200_OK)
 
 
 class TripDetailView(APIView):
     """Retrieve or delete a specific trip by its UUID."""
     def get(self, request, trip_id):
         trip = get_object_or_404(Trip, id=trip_id)
-        serializer = TripDetailSerializer(trip)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(trip.to_frontend_dict(), status=status.HTTP_200_OK)
 
     def delete(self, request, trip_id):
         trip = get_object_or_404(Trip, id=trip_id)

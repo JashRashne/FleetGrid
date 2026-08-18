@@ -14,7 +14,7 @@ export default function DashboardPage() {
 
   const handleOpenTrip = (trip) => {
     setActiveTrip(trip);
-    navigate('/plan', { state: { loadTrip: trip } });
+    navigate(`/trip/${trip.id}`, { state: { loadTrip: trip } });
   };
 
   const handleQuickRoute = (current, pickup, dropoff) => {
