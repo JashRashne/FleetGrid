@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -9,35 +9,39 @@ function MapBoundsUpdater({ bounds }) {
   const map = useMap();
   useEffect(() => {
     if (bounds && bounds.length > 0) {
-      map.fitBounds(bounds, { padding: [40, 40] });
+      try {
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 });
+      } catch (err) {
+        console.warn('Map bounds fit error:', err);
+      }
     }
   }, [bounds, map]);
   return null;
 }
 
-// Create custom clay-styled HTML marker icons
+// Create custom HTML marker icons
 function createCustomIcon(symbol, bgColor, borderColor) {
   return L.divIcon({
-    className: 'custom-clay-pin',
+    className: 'custom-map-pin',
     html: `
       <div style="
         background: ${bgColor};
-        width: 32px;
-        height: 32px;
+        width: 34px;
+        height: 34px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 16px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 2px 3px rgba(255,255,255,0.6);
-        border: 2.5px solid ${borderColor};
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        border: 2px solid ${borderColor};
         cursor: pointer;
       ">
         ${symbol}
       </div>
     `,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
+    iconSize: [34, 34],
+    iconAnchor: [17, 17],
     popupAnchor: [0, -18],
   });
 }
@@ -52,76 +56,103 @@ const ICONS = {
   restart: createCustomIcon('🔄', '#fdf2f8', '#ec4899'),
 };
 
-export default function RouteMap({ locations, routeGeometry, events }) {
-  if (!locations || !locations.current) return null;
+export default function RouteMap(props) {
+  const trip = props.trip || {};
+  const locations = props.locations || trip.locations || trip.locations_json;
+  const routeGeometry = props.routeGeometry || props.route_geometry || trip.route_geometry || trip.route_geometry_json;
+  const events = props.events || trip.events || trip.events_json || [];
+
+  if (!locations || (!locations.current && !locations.pickup && !locations.dropoff)) {
+    return (
+      <div className="map-card" style={{ padding: '30px', textAlign: 'center', background: '#fff', border: '1px solid #dedede' }}>
+        <p style={{ color: '#777' }}>Map coordinates are loading or unavailable for this route.</p>
+      </div>
+    );
+  }
+
+  const currentLoc = locations.current || {};
+  const pickupLoc = locations.pickup || {};
+  const dropoffLoc = locations.dropoff || {};
+
+  const getLat = (loc) => parseFloat(loc.lat ?? loc.latitude ?? 0);
+  const getLng = (loc) => parseFloat(loc.lng ?? loc.longitude ?? loc.lon ?? 0);
 
   // Convert GeoJSON [lon, lat] coordinates to Leaflet [lat, lon]
-  const polylinePositions = (routeGeometry?.coordinates || []).map(coord => [coord[1], coord[0]]);
+  const rawCoords = routeGeometry?.coordinates || (Array.isArray(routeGeometry) ? routeGeometry : []);
+  const polylinePositions = rawCoords.map(coord => [coord[1], coord[0]]).filter(pos => !isNaN(pos[0]) && !isNaN(pos[1]));
 
   // Collect key stop events for map markers
   const stopMarkers = [];
 
   // Start Marker
-  stopMarkers.push({
-    id: 'start',
-    pos: [locations.current.lat, locations.current.lng],
-    icon: ICONS.start,
-    title: `Start: ${locations.current.name}`,
-    desc: 'Trip Origin / Pre-trip'
-  });
+  if (getLat(currentLoc) && getLng(currentLoc)) {
+    stopMarkers.push({
+      id: 'start',
+      pos: [getLat(currentLoc), getLng(currentLoc)],
+      icon: ICONS.start,
+      title: `Start: ${currentLoc.name || trip.origin_name || 'Origin'}`,
+      desc: 'Trip Origin / Pre-trip Inspection'
+    });
+  }
 
   // Pickup Marker
-  stopMarkers.push({
-    id: 'pickup',
-    pos: [locations.pickup.lat, locations.pickup.lng],
-    icon: ICONS.pickup,
-    title: `Pickup: ${locations.pickup.name}`,
-    desc: 'Shipper Loading (1 Hour On-Duty)'
-  });
+  if (getLat(pickupLoc) && getLng(pickupLoc)) {
+    stopMarkers.push({
+      id: 'pickup',
+      pos: [getLat(pickupLoc), getLng(pickupLoc)],
+      icon: ICONS.pickup,
+      title: `Pickup: ${pickupLoc.name || trip.pickup_name || 'Shipper'}`,
+      desc: 'Shipper Loading (1 Hour On-Duty)'
+    });
+  }
 
   // Dropoff Marker
-  stopMarkers.push({
-    id: 'dropoff',
-    pos: [locations.dropoff.lat, locations.dropoff.lng],
-    icon: ICONS.dropoff,
-    title: `Dropoff: ${locations.dropoff.name}`,
-    desc: 'Receiver Unloading (1 Hour On-Duty)'
-  });
+  if (getLat(dropoffLoc) && getLng(dropoffLoc)) {
+    stopMarkers.push({
+      id: 'dropoff',
+      pos: [getLat(dropoffLoc), getLng(dropoffLoc)],
+      icon: ICONS.dropoff,
+      title: `Dropoff: ${dropoffLoc.name || trip.dropoff_name || 'Receiver'}`,
+      desc: 'Receiver Unloading (1 Hour On-Duty)'
+    });
+  }
 
   // En-Route HOS Stop Markers
-  (events || []).forEach((evt) => {
-    if (evt.latitude && evt.longitude && evt.latitude !== 0) {
+  (events || []).forEach((evt, idx) => {
+    const lat = parseFloat(evt.latitude);
+    const lon = parseFloat(evt.longitude);
+    if (!isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0) {
       if (evt.event_type === 'FUEL_STOP') {
         stopMarkers.push({
-          id: evt.event_id,
-          pos: [evt.latitude, evt.longitude],
+          id: evt.event_id || `fuel-${idx}`,
+          pos: [lat, lon],
           icon: ICONS.fuel,
-          title: `Fuel Stop (${evt.route_distance_miles} mi)`,
-          desc: `${evt.location_name} — 30m On-Duty Fueling`
+          title: `Fuel Stop (${evt.route_distance_miles || evt.distance_miles || 0} mi)`,
+          desc: `${evt.location_name || 'En route'} — 30m On-Duty Fueling`
         });
       } else if (evt.event_type === 'REST_BREAK_30') {
         stopMarkers.push({
-          id: evt.event_id,
-          pos: [evt.latitude, evt.longitude],
+          id: evt.event_id || `rest-${idx}`,
+          pos: [lat, lon],
           icon: ICONS.rest,
-          title: `30-Min Rest Break (${evt.route_distance_miles} mi)`,
-          desc: `${evt.location_name} — Mandatory HOS Break`
+          title: `30-Min Rest Break (${evt.route_distance_miles || evt.distance_miles || 0} mi)`,
+          desc: `${evt.location_name || 'En route'} — Mandatory HOS Break`
         });
       } else if (evt.event_type === 'SLEEPER_RESET_10') {
         stopMarkers.push({
-          id: evt.event_id,
-          pos: [evt.latitude, evt.longitude],
+          id: evt.event_id || `sleeper-${idx}`,
+          pos: [lat, lon],
           icon: ICONS.sleeper,
-          title: `10-Hour Sleeper Reset (${evt.route_distance_miles} mi)`,
-          desc: `${evt.location_name} — 10h Consecutive Rest`
+          title: `10-Hour Sleeper Reset (${evt.route_distance_miles || evt.distance_miles || 0} mi)`,
+          desc: `${evt.location_name || 'En route'} — 10h Consecutive Rest`
         });
       } else if (evt.event_type === 'CYCLE_RESTART_34') {
         stopMarkers.push({
-          id: evt.event_id,
-          pos: [evt.latitude, evt.longitude],
+          id: evt.event_id || `restart-${idx}`,
+          pos: [lat, lon],
           icon: ICONS.restart,
-          title: `34-Hour Restart (${evt.route_distance_miles} mi)`,
-          desc: `${evt.location_name} — Full 70h Cycle Reset`
+          title: `34-Hour Restart (${evt.route_distance_miles || evt.distance_miles || 0} mi)`,
+          desc: `${evt.location_name || 'En route'} — Full 70h Cycle Reset`
         });
       }
     }
@@ -132,56 +163,60 @@ export default function RouteMap({ locations, routeGeometry, events }) {
     allBounds.push(...polylinePositions);
   }
 
-  const defaultCenter = [locations.current.lat, locations.current.lng];
+  const defaultCenter = stopMarkers.length > 0 
+    ? stopMarkers[0].pos 
+    : (polylinePositions.length > 0 ? polylinePositions[0] : [39.8283, -98.5795]);
 
   return (
-    <div className="clay-card map-card">
-      <div className="map-header">
+    <div className="map-card" style={{ background: '#fff', border: '1px solid #dedede', padding: '20px' }}>
+      <div className="map-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #eee' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <MapIcon size={18} color="#3b82f6" />
-          <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Interactive Route & Stop Map</h3>
+          <MapIcon size={18} color="#202020" />
+          <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#111', margin: 0 }}>Interactive Route & Stop Map</h3>
         </div>
-        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+        <div style={{ fontSize: '12px', color: '#777', fontWeight: 500 }}>
           OSRM Route • {stopMarkers.length} Marked Waypoints
         </div>
       </div>
 
-      <MapContainer
-        center={defaultCenter}
-        zoom={6}
-        scrollWheelZoom={false}
-        className="leaflet-container"
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-
-        {polylinePositions.length > 0 && (
-          <Polyline
-            positions={polylinePositions}
-            pathOptions={{
-              color: '#2563eb',
-              weight: 5,
-              opacity: 0.85,
-              lineJoin: 'round',
-            }}
+      <div style={{ height: '440px', width: '100%', position: 'relative' }}>
+        <MapContainer
+          center={defaultCenter}
+          zoom={5}
+          scrollWheelZoom={false}
+          style={{ height: '100%', width: '100%', borderRadius: '0' }}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-        )}
 
-        {stopMarkers.map((marker) => (
-          <Marker key={marker.id} position={marker.pos} icon={marker.icon}>
-            <Popup>
-              <div style={{ padding: '4px' }}>
-                <strong style={{ fontSize: '14px', color: '#1e293b' }}>{marker.title}</strong>
-                <p style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>{marker.desc}</p>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+          {polylinePositions.length > 0 && (
+            <Polyline
+              positions={polylinePositions}
+              pathOptions={{
+                color: '#2563eb',
+                weight: 5,
+                opacity: 0.85,
+                lineJoin: 'round',
+              }}
+            />
+          )}
 
-        <MapBoundsUpdater bounds={allBounds} />
-      </MapContainer>
+          {stopMarkers.map((marker) => (
+            <Marker key={marker.id} position={marker.pos} icon={marker.icon}>
+              <Popup>
+                <div style={{ padding: '4px' }}>
+                  <strong style={{ fontSize: '13px', color: '#111', display: 'block' }}>{marker.title}</strong>
+                  <p style={{ fontSize: '12px', color: '#666', marginTop: '3px', margin: 0 }}>{marker.desc}</p>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+
+          {allBounds.length > 0 && <MapBoundsUpdater bounds={allBounds} />}
+        </MapContainer>
+      </div>
     </div>
   );
 }

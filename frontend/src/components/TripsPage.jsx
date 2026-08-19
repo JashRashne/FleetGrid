@@ -207,7 +207,6 @@ export default function TripsPage() {
 
                       {pickupName && (
                         <div className="endpoint-row pickup">
-                          <div className="route-connector-line" />
                           <MapPin size={16} className="pin-pickup" />
                           <div className="endpoint-text">
                             <span className="endpoint-label">Shipper Pickup</span>

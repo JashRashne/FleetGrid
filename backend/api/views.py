@@ -151,10 +151,17 @@ class PlanTripView(APIView):
 
         # 5. Generate 24-Hour ELD Daily Log Sheets
         initial_cycle_used_minutes = int(cycle_used_hours * 60)
+        driver_name = request.data.get("driver_name") or "Alex Morgan"
+        carrier_name = request.data.get("carrier_name") or "MileMint Logistics LLC"
+        truck_number = request.data.get("truck_number") or "TRK-9042"
         daily_logs = generate_daily_log_sheets(
             events=events,
             start_time_iso=start_time_iso,
             initial_cycle_used_minutes=initial_cycle_used_minutes,
+            carrier_name=carrier_name,
+            driver_name=driver_name,
+            truck_number=truck_number,
+            trailer_number="TLR-5510",
             origin_name=curr_name,
             pickup_name=pick_name,
             destination_name=drop_name,
@@ -321,11 +328,79 @@ class TripDetailView(APIView):
 class LogsListView(APIView):
     """Fetch all daily log sheets across all trips for the driver logs hub."""
     def get(self, request):
-        logs = DailyLog.objects.select_related('trip').all().order_by('-created_at')
+        logs = DailyLog.objects.select_related('trip').all().order_by('-created_at', 'day_number')
         result = []
         for log in logs:
             log_dict = log.to_dict()
             log_dict["trip_id"] = str(log.trip_id)
-            log_dict["trip_route"] = f"{log.trip.origin_name} → {log.trip.dropoff_name}"
+            if log.trip:
+                log_dict["trip_route"] = f"{log.trip.origin_name} → {log.trip.dropoff_name}"
+            
+            # Recalculate exact hours from segments if needed
+            segments = log_dict.get("segments") or log_dict.get("duty_segments") or log.grid_intervals_json or []
+            if segments:
+                drive_mins = 0
+                on_duty_mins = 0
+                off_duty_mins = 0
+                sleeper_mins = 0
+                miles_today = 0.0
+
+                for seg in segments:
+                    dur_mins = max(0, (seg.get("end_hour", 0) - seg.get("start_hour", 0)) * 60) if "start_hour" in seg else max(0, seg.get("end_min", 0) - seg.get("start_min", 0))
+                    status = str(seg.get("duty_status", "")).upper()
+                    remark = str(seg.get("remark", "")).upper()
+                    combined = f"{status} {remark}"
+                    miles_today += float(seg.get("miles_driven", 0) or seg.get("distance_miles", 0) or 0)
+
+                    if "DRIV" in combined:
+                        drive_mins += dur_mins
+                    elif any(k in combined for k in ["ON_DUTY", "ON DUTY", "LOAD", "PICKUP", "UNLOAD", "INSPECT", "FUEL"]):
+                        on_duty_mins += dur_mins
+                    elif "SLEEP" in combined:
+                        sleeper_mins += dur_mins
+                    else:
+                        off_duty_mins += dur_mins
+
+                log_dict["totals_hours"] = {
+                    "driving": round(drive_mins / 60.0, 1),
+                    "on_duty_not_driving": round(on_duty_mins / 60.0, 1),
+                    "off_duty": round(off_duty_mins / 60.0, 1),
+                    "sleeper_berth": round(sleeper_mins / 60.0, 1),
+                    "total": 24.0
+                }
+                if miles_today > 0:
+                    log_dict["total_miles_driving_today"] = round(miles_today, 1)
+            else:
+                # No segments — fall back to model's stored hour fields directly
+                stored_driving = log.total_driving_hours or 0.0
+                stored_on_duty = log.total_on_duty_hours or 0.0
+                stored_off_duty = log.total_off_duty_hours or 0.0
+                stored_sleeper = log.total_sleeper_hours or 0.0
+
+                # If model fields are also all zero, try reading from log_data_json totals
+                if stored_driving == 0 and stored_on_duty == 0:
+                    existing_totals = log_dict.get("totals_hours", {})
+                    stored_driving = existing_totals.get("driving", 0.0)
+                    stored_on_duty = existing_totals.get("on_duty_not_driving", 0.0)
+                    stored_off_duty = existing_totals.get("off_duty", 0.0)
+                    stored_sleeper = existing_totals.get("sleeper_berth", 0.0)
+
+                log_dict["totals_hours"] = {
+                    "driving": round(stored_driving, 1),
+                    "on_duty_not_driving": round(stored_on_duty, 1),
+                    "off_duty": round(stored_off_duty, 1),
+                    "sleeper_berth": round(stored_sleeper, 1),
+                    "total": 24.0
+                }
+                # Also expose flat fields for frontend compatibility
+                log_dict["total_driving_hours"] = round(stored_driving, 1)
+                log_dict["total_on_duty_hours"] = round(stored_on_duty, 1)
+
+            # Ensure driver and carrier match current driver profile
+            if not log_dict.get("driver_name") or "Alex Mercer" in log_dict.get("driver_name", ""):
+                log_dict["driver_name"] = "Alex Morgan"
+            if not log_dict.get("carrier_name") or "Apex Freight" in log_dict.get("carrier_name", ""):
+                log_dict["carrier_name"] = "MileMint Logistics LLC"
+
             result.append(log_dict)
         return Response({"logs": result}, status=status.HTTP_200_OK)

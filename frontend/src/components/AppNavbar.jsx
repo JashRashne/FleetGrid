@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
-  Truck, LayoutDashboard, PlusCircle, FileText, 
+  LayoutDashboard, PlusCircle, FileText, 
   LogOut, ShieldCheck, User, Sparkles, Route, Menu, X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -27,10 +27,9 @@ export default function AppNavbar() {
   return (
     <header className="app-navbar">
       <div className="navbar-container">
-        <Link to="/dashboard" className="navbar-brand">
-          <span className="brand-icon"><Truck size={20} /></span>
-          <span className="brand-text">mile<span>mint</span></span>
-          <span className="brand-badge">ELD</span>
+        <Link to="/dashboard" className="minimal-brand navbar-brand">
+          <span className="minimal-brand-mark">m</span>
+          <span>milemint</span>
         </Link>
 
         <nav className={`navbar-links ${isMobileMenuOpen ? 'is-open' : ''}`} aria-label="Driver portal navigation">
