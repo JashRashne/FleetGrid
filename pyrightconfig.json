@@ -4,8 +4,11 @@
   "extraPaths": [
     "./backend",
     "./backend/api",
-    "./backend/venv/lib/python3.14/site-packages"
+    "./backend/venv/lib/python3.14/site-packages",
+    "/Users/jashrashne/Documents/VSCodeProjects/VSCodeProjectsLatest/truck_fullstack/backend/venv/lib/python3.14/site-packages"
   ],
+  "reportMissingImports": false,
+  "reportMissingModuleSource": false,
   "include": [
     "backend"
   ]
