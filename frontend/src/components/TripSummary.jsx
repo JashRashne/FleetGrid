@@ -1,5 +1,5 @@
 import React from 'react';
-import { Route, Clock, Fuel, Coffee, Moon, BatteryCharging } from 'lucide-react';
+import { Route, Clock, Moon, Coffee, BatteryCharging, Fuel, Bed, AlertOctagon } from 'lucide-react';
 
 export default function TripSummary(props) {
   const summary = props.summary || props.trip?.summary || props.trip?.summary_json || props.trip;
@@ -18,56 +18,76 @@ export default function TripSummary(props) {
 
   return (
     <div className="kpi-grid">
-      <div className="clay-card kpi-card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span className="kpi-title">Total Distance</span>
-          <Route size={18} color="#3b82f6" />
+      {/* 01: Total Distance */}
+      <div className="kpi-card">
+        <div className="kpi-card-top">
+          <span className="kpi-title">TOTAL DISTANCE</span>
+          <span className="kpi-icon-wrap icon-blue">
+            <Route size={16} />
+          </span>
         </div>
-        <div className="kpi-value">{Number(totalDistance).toLocaleString()} mi</div>
-        <span className="kpi-sub">{days} Calendar Day{days > 1 ? 's' : ''}</span>
+        <div className="kpi-value">{Number(totalDistance).toLocaleString()} <span className="kpi-unit">mi</span></div>
+        <div className="kpi-sub">{days} Calendar Day{days > 1 ? 's' : ''}</div>
       </div>
 
-      <div className="clay-card kpi-card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span className="kpi-title">Driving Time</span>
-          <Clock size={18} color="#10b981" />
+      {/* 02: Driving Time */}
+      <div className="kpi-card">
+        <div className="kpi-card-top">
+          <span className="kpi-title">DRIVING TIME</span>
+          <span className="kpi-icon-wrap icon-green">
+            <Clock size={16} />
+          </span>
         </div>
-        <div className="kpi-value">{driveHours} hrs</div>
-        <span className="kpi-sub">{driveMinutes} driving mins</span>
+        <div className="kpi-value">{driveHours} <span className="kpi-unit">hrs</span></div>
+        <div className="kpi-sub">{driveMinutes.toLocaleString()} driving mins</div>
       </div>
 
-      <div className="clay-card kpi-card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span className="kpi-title">Total Span</span>
-          <Moon size={18} color="#8b5cf6" />
+      {/* 03: Total Duration */}
+      <div className="kpi-card">
+        <div className="kpi-card-top">
+          <span className="kpi-title">TOTAL SPAN</span>
+          <span className="kpi-icon-wrap icon-purple">
+            <Moon size={16} />
+          </span>
         </div>
-        <div className="kpi-value">{totalDuration} hrs</div>
-        <span className="kpi-sub">Drive + Stops + Resets</span>
+        <div className="kpi-value">{totalDuration} <span className="kpi-unit">hrs</span></div>
+        <div className="kpi-sub">Drive + Stops + Resets</div>
       </div>
 
-      <div className="clay-card kpi-card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span className="kpi-title">HOS Stops</span>
-          <Coffee size={18} color="#f59e0b" />
+      {/* 04: HOS Milestones */}
+      <div className="kpi-card">
+        <div className="kpi-card-top">
+          <span className="kpi-title">HOS STOPS</span>
+          <span className="kpi-icon-wrap icon-amber">
+            <Coffee size={16} />
+          </span>
         </div>
-        <div className="kpi-value" style={{ fontSize: '18px', display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <span title="Fuel Stops">🛢️ {fuelStops}</span>
-          <span title="30m Breaks">🛑 {restBreaks}</span>
-          <span title="10h Sleeper Resets">🛌 {sleeperResets}</span>
+        <div className="kpi-milestones-row">
+          <span className="milestone-chip" title="Fuel Stops">
+            <Fuel size={13} /> {fuelStops} Fuel
+          </span>
+          <span className="milestone-chip" title="30-Min Rest Breaks">
+            <Coffee size={13} /> {restBreaks} Rest
+          </span>
+          <span className="milestone-chip" title="10-Hour Sleeper Resets">
+            <Bed size={13} /> {sleeperResets} Sleep
+          </span>
         </div>
-        <span className="kpi-sub">Compliance Milestones</span>
+        <div className="kpi-sub">Compliance Milestones</div>
       </div>
 
-      <div className="clay-card kpi-card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span className="kpi-title">70-Hr Cycle</span>
-          <BatteryCharging size={18} color="#2563eb" />
+      {/* 05: 70-Hr Cycle */}
+      <div className="kpi-card">
+        <div className="kpi-card-top">
+          <span className="kpi-title">70-HR CYCLE</span>
+          <span className="kpi-icon-wrap icon-indigo">
+            <BatteryCharging size={16} />
+          </span>
         </div>
-        <div className="kpi-value" style={{ fontSize: '17px' }}>
-          {cycleEnding} / 70.0 h
-        </div>
-        <span className="kpi-sub">{cycleRemaining} hrs left after trip</span>
+        <div className="kpi-value">{cycleEnding} <span className="kpi-unit">/ 70.0 h</span></div>
+        <div className="kpi-sub">{cycleRemaining} hrs remaining</div>
       </div>
     </div>
   );
 }
+

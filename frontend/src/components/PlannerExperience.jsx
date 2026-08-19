@@ -337,31 +337,40 @@ export default function PlannerExperience() {
               </button>
             </div>
 
-            {/* Ready Banner */}
+            {/* Aesthetic & Minimal Trip Itinerary Ready Banner */}
             <div className="plan-ready-banner">
-              <div>
-                <span className="plan-ready-mark">
-                  <Truck size={22} />
-                </span>
-                <div>
-                  <span>TRIP ITINERARY READY</span>
-                  <h1>
-                    {normalizedTrip.origin_name || normalizedTrip.locations?.current?.name}
-                    <ArrowRight size={18} />
-                    {normalizedTrip.pickup_name || normalizedTrip.locations?.pickup?.name}
-                    <ArrowRight size={18} />
-                    {normalizedTrip.dropoff_name || normalizedTrip.locations?.dropoff?.name}
-                  </h1>
-                  <p>
-                    Full FMCSA 70h/8d compliant schedule with {normalizedTrip.daily_logs?.length || 1} generated 24-hour log sheet{(normalizedTrip.daily_logs?.length || 1) > 1 ? 's' : ''}.
-                  </p>
+              <div className="banner-left-content">
+                <div className="banner-top-badge-row">
+                  <span className="banner-status-pill">
+                    <span className="status-live-dot" />
+                    TRIP ITINERARY READY
+                  </span>
+                  <span className="banner-compliance-chip">
+                    <ShieldCheck size={13} />
+                    FMCSA 70h / 8-Day Compliant
+                  </span>
                 </div>
+
+                <h1 className="banner-route-title">
+                  <span className="route-city">{normalizedTrip.origin_name || normalizedTrip.locations?.current?.name || 'Origin'}</span>
+                  <ArrowRight size={17} className="route-arrow-icon" />
+                  <span className="route-city">{normalizedTrip.pickup_name || normalizedTrip.locations?.pickup?.name || 'Pickup'}</span>
+                  <ArrowRight size={17} className="route-arrow-icon" />
+                  <span className="route-city">{normalizedTrip.dropoff_name || normalizedTrip.locations?.dropoff?.name || 'Destination'}</span>
+                </h1>
+
+                <p className="banner-meta-desc">
+                  Full FMCSA certified schedule with <strong>{normalizedTrip.daily_logs?.length || 1} generated 24-hour log sheet{(normalizedTrip.daily_logs?.length || 1) > 1 ? 's' : ''}</strong> ready for driver dispatch.
+                </p>
               </div>
 
-              <button onClick={() => setActiveTab('logs')} className="btn-view-logs-cta">
-                <FileText size={16} />
-                <span>View Daily Logs ({normalizedTrip.daily_logs?.length || 1})</span>
-              </button>
+              <div className="banner-right-actions">
+                <button onClick={() => setActiveTab('logs')} className="btn-view-logs-cta">
+                  <FileText size={15} />
+                  <span>View Daily Logs</span>
+                  <span className="logs-count-chip">{normalizedTrip.daily_logs?.length || 1}</span>
+                </button>
+              </div>
             </div>
 
             {/* Results Tab Navigation */}
@@ -373,13 +382,15 @@ export default function PlannerExperience() {
                   <button
                     key={tab.id}
                     type="button"
-                    className={isActive ? 'active' : ''}
+                    className={`planner-tab-btn ${isActive ? 'active' : ''}`}
                     onClick={() => setActiveTab(tab.id)}
                   >
                     <Icon size={16} />
                     <span>{tab.label}</span>
                     {tab.id === 'logs' && normalizedTrip.daily_logs?.length > 0 && (
-                      <span className="tab-count-badge">{normalizedTrip.daily_logs.length}</span>
+                      <span className={`tab-count-badge ${isActive ? 'badge-active' : ''}`}>
+                        {normalizedTrip.daily_logs.length}
+                      </span>
                     )}
                   </button>
                 );
