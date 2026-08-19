@@ -1,4 +1,4 @@
-# FleetGrid — FMCSA HOS-Aware Trip Planner & ELD Log Generator
+# MileMint — FMCSA HOS-Aware Trip Planner & ELD Log Generator
 
 > **A production-grade full-stack application** that plans commercial truck routes in compliance with FMCSA Hours of Service federal regulations and dynamically generates pixel-perfect 24-hour Driver Daily Log Sheets as vector SVGs — the kind of output an ELD device would produce.
 
@@ -17,6 +17,8 @@
 
 ---
 
+**Loom** : https://www.loom.com/share/ddd983755c3841fb94366ae72968ac65
+
 ## 📖 What This Is
 
 Most trucking apps show a route on a map. This one plans the entire trip **around federal law**.
@@ -33,7 +35,7 @@ Given an origin, a pickup stop, a delivery destination, and how many hours a dri
 ## 🏗️ System Architecture
 
 <div align="center">
-  <img src="https://res.cloudinary.com/dgbgxtsrl/image/upload/v1787170420/ChatGPT_Image_Aug_20_2026_01_43_08_AM_qv4rcl.png" alt="FleetGrid System Architecture Diagram" width="100%" />
+  <img src="https://res.cloudinary.com/dgbgxtsrl/image/upload/v1787170420/ChatGPT_Image_Aug_20_2026_01_43_08_AM_qv4rcl.png" alt="MileMint System Architecture Diagram" width="100%" />
 </div>
 
 ---
@@ -41,7 +43,7 @@ Given an origin, a pickup stop, a delivery destination, and how many hours a dri
 ## 🔄 End-to-End Data Flow
 
 <div align="center">
-  <img src="https://res.cloudinary.com/dgbgxtsrl/image/upload/v1787170510/ChatGPT_Image_Aug_20_2026_01_45_00_AM_m0yhx5.png" alt="FleetGrid End-to-End Data Flow Diagram" width="100%" />
+  <img src="https://res.cloudinary.com/dgbgxtsrl/image/upload/v1787170510/ChatGPT_Image_Aug_20_2026_01_45_00_AM_m0yhx5.png" alt="MileMint End-to-End Data Flow Diagram" width="100%" />
 </div>
 
 ---
@@ -260,5 +262,5 @@ The HOS engine is intentionally a **pure domain module** with zero Django or dat
 
 ---
 
-*Built with ⚡ by **Jash Rashne** — demonstrating full-stack engineering across a complex regulatory domain: REST API design, pure domain logic without framework coupling, real-world third-party integrations, vector graphics generation, and a production-quality UI — fully tested and deployment-ready.*
+
 
