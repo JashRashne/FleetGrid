@@ -234,13 +234,6 @@ truck_fullstack/
         └── index.css                #   Claymorphic design system tokens & animations
 ```
 
----
-
-## 🎨 Design Philosophy
-
-**Claymorphism** was chosen deliberately — it brings physicality and warmth to a compliance-heavy domain that is traditionally paper-based. The tactile 3D cards and puffy interactive elements reflect the real-world artifacts (paper log books, physical trip manifests) that this software digitizes.
-
-The HOS engine is intentionally a **pure domain module** with zero Django or database dependencies. It is unit-testable in complete isolation, extractable into a microservice, and reusable across different transport modes. Every input and output is a plain Python dict or integer — no framework coupling, no side effects.
 
 ---
 
